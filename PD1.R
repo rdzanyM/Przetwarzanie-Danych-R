@@ -31,7 +31,7 @@ q <- subset(Posts, PostTypeId == 1 & !is.na(FavoriteCount))[c("OwnerUserId", "Ti
 u_q <- merge(Users, q, by.x = "Id", by.y = "OwnerUserId")[c("DisplayName", "Id", "Location", "FavoriteCount", "Title")]
 g <- do.call(data.frame, aggregate(u_q["FavoriteCount"], u_q[c("DisplayName", "Id", "Location")], function(x)
   c(sum = sum(x), max = max(x))))
-g <- head(a[order(-a$FavoriteCount.sum),], 10)
+g <- head(g[order(-g$FavoriteCount.sum),], 10)
 g <- merge(g, q, by.x = c("Id", "FavoriteCount.max"), by.y = c("OwnerUserId", "FavoriteCount"))
 g <- g[,c(3,1,4,5,6,2)]
 colnames(g) <- c("DisplayName", "Id", "Location", "FavoriteTotal", "MostFavoriteQuestion", "MostFavoriteQuestionLikes")
@@ -74,7 +74,7 @@ head(p[order(-p$PositiveAnswerCount),], 10)
 
 
 #3)
-#Dla ka¿dego roku zwraca tytu³ pytania, które dosta³o najwiêcej 'upVotów' w danym roku, ten rok i t¹ liczbê 'upVotów'.
+#Dla ka¿dego roku zwraca tytu³ pytania, które dosta³o najwiêcej upvotów w danym roku, ten rok i t¹ liczbê upVotów.
 sqldf::sqldf("SELECT Posts.Title,
              UpVotesPerYear.Year,
              MAX(UpVotesPerYear.Count) AS Count
@@ -92,7 +92,8 @@ sqldf::sqldf("SELECT Posts.Title,
              GROUP BY Year")
 #basic
 uv <- subset(Votes, VoteTypeId == 2)[c("PostId", "CreationDate")]
-uv["CreationDate"] <- format(as.Date(unlist(uv["CreationDate"])), "%Y")
+#uv["CreationDate"] <- format(as.Date(unlist(uv["CreationDate"])), "%Y") #bardzo wolne
+uv["CreationDate"] <- substr(unlist(uv["CreationDate"]), 1, 4)
 uv_y <- aggregate(cbind(PostId)~PostId+CreationDate, uv, length)
 colnames(uv_y) <- c("Id", "Year", "Count")
 q <- subset(Posts, PostTypeId == 1)[c("Id", "Title")]
@@ -214,4 +215,54 @@ subset(Users, Id %in% unlist(vbUid), select = c("Id", "DisplayName", "Reputation
 #..
 
 
+#7)
+#Zwraca 10 pytañ (tytu³ i liczbê 'starych' upvotów) z najwiêksz¹ liczb¹ 'starych' upvotów i bez 'nowych' upvotów.
+#Upvote jest 'nowy' jeœli by³ dodany w 2016 lub 2017 roku. Upvoty które nie s¹ 'nowe', s¹ 'stare'.
+sqldf::sqldf("SELECT Posts.Title,
+              VotesByAge2.OldVotes
+              FROM Posts JOIN (
+                SELECT
+                PostId,
+                MAX(CASE WHEN VoteDate = 'new' THEN Total ELSE 0 END) NewVotes,
+                MAX(CASE WHEN VoteDate = 'old' THEN Total ELSE 0 END) OldVotes,
+                SUM(Total) AS Votes
+                FROM (
+                  SELECT
+                  PostId,
+                  CASE STRFTIME('%Y', CreationDate)
+                    WHEN '2017'
+                      THEN 'new'
+                    WHEN '2016'
+                      THEN 'new'
+                    ELSE 'old'
+                  END VoteDate,
+                  COUNT(*) AS Total
+                  FROM Votes
+                  WHERE VoteTypeId=2
+                  GROUP BY PostId, VoteDate
+                ) AS VotesByAge
+                GROUP BY VotesByAge.PostId
+                HAVING NewVotes=0
+              ) AS VotesByAge2 ON VotesByAge2.PostId=Posts.ID
+              WHERE Posts.PostTypeId=1
+              ORDER BY VotesByAge2.OldVotes DESC
+              LIMIT 10")
+#basic
+v <- subset(Votes, VoteTypeId == 2, select = c("PostId", "CreationDate"))
+v["CreationDate"] <- substr(unlist(v["CreationDate"]), 1, 4)
+isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
+nvId <- unique(v[isNew,"PostId"])
+ov <- subset(v[!isNew,], !PostId%in%nvId)
+q <- subset(Posts, PostTypeId == 1 & !Id%in%nvId)[c("Id", "Title")]
+g <- aggregate(ov$PostId, ov["PostId"], length)
+q_ov <- merge(q, g, by.x = "Id", by.y = "PostId")
+q_ov <- q_ov[,c(2,3)]
+colnames(q_ov) <- c("Title", "OldVotes") 
+head(q_ov[order(-q_ov$OldVotes),], 10)
+
+
+#..
+
+
+#..
 
