@@ -1,10 +1,11 @@
-#options(stringsAsFactors = FALSE)
-#setwd("C:/Users/Michal/Desktop/R/files")
-#Tags <- read.csv("Tags.csv")
-#Posts <- read.csv("Posts.csv")
-#Users <- read.csv("Users.csv")
-#Votes <- read.csv("Votes.csv")
-#Comments <- read.csv("Comments.csv")
+options(stringsAsFactors = FALSE)
+setwd("C:/Users/Michal/Desktop/R/files")
+Tags <- read.csv("Tags.csv")
+Posts <- read.csv("Posts.csv")
+Users <- read.csv("Users.csv")
+Votes <- read.csv("Votes.csv")
+Comments <- read.csv("Comments.csv")
+Badges <- read.csv("Badges.csv")
 
 #install.packages("sqldf")
 #library(sqldf)
@@ -179,5 +180,38 @@ head(q_cts[order(-q_cts$CommentsTotalScore),], 10)
 
 
 #6)
+#Zwraca u¿ytkowników (id, nazwê, reputacjê, wiek, lokacjê), którzy s¹ w posiadaniu 'wartoœciowej' odznaki
+#Odznaka jest 'wartoœciowa' wtedy i tylko wtedy gdy jest z³ota i zosta³a zdobyta przez od 2 do 10 u¿ytkowników
+sqldf::sqldf("SELECT DISTINCT Users.Id,
+              Users.DisplayName,
+              Users.Reputation,
+              Users.Age,
+              Users.Location
+              FROM (
+                SELECT
+                Name, UserID
+                FROM Badges
+                WHERE Name IN (
+                  SELECT
+                  Name
+                  FROM Badges
+                  WHERE Class=1
+                  GROUP BY Name
+                  HAVING COUNT(*) BETWEEN 2 AND 10
+                )
+                AND Class=1
+              ) AS ValuableBadges
+              JOIN Users ON ValuableBadges.UserId=Users.Id")
+#basic
+b <- subset(Badges, Class == 1, select = c("Name", "UserId"))
+vbNames <- subset(aggregate(b$Name, b["Name"], length), x <= 10 & x >= 2, select = "Name")
+vbUid <- subset(b, Name %in% unlist(vbNames), select = "UserId")
+subset(Users, Id %in% unlist(vbUid), select = c("Id", "DisplayName", "Reputation", "Age", "Location"))
+
+#..
+
+
+#..
+
 
 
