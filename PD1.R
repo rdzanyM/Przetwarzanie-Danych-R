@@ -130,11 +130,11 @@ g[,c(3,1,2)]
 q <-
   filter(Posts, PostTypeId == 1)[c("Id", "Title")]
 q_uv_y <- 
-  filter(Votes, VoteTypeId == 2)[c("PostId", "CreationDate")] %>%
-  mutate(Year = substr(unlist(uv["CreationDate"]), 1, 4)) %>%
+  filter(Votes, VoteTypeId == 2) %>%
+  select(Id = PostId, CreationDate) %>%
+  mutate(Year = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4))) %>%
   group_by(PostId, Year) %>%
   summarise(Count = n()) %>%
-  select(Id = PostId, Year, Count) %>%
   inner_join(q)
 d <-
   q_uv_y %>%
@@ -326,7 +326,7 @@ sqldf("SELECT Posts.Title,
 v <- subset(Votes, VoteTypeId == 2, select = c("PostId", "CreationDate"))
 v["CreationDate"] <- substr(unlist(v["CreationDate"]), 1, 4)
 isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
-nvId <- unique(v[isNew,"PostId"])
+nvId <- unique(v[isNew, "PostId"])
 ov <- subset(v[!isNew,], !PostId%in%nvId)
 q <- subset(Posts, PostTypeId == 1 & !Id%in%nvId)[c("Id", "Title")]
 g <- aggregate(ov$PostId, ov["PostId"], length)
@@ -336,9 +336,24 @@ colnames(q_ov) <- c("Title", "OldVotes")
 head(q_ov[order(-q_ov$OldVotes),], 10)
 
 #dplyr
-
-
-
+v <- 
+  filter(Votes, VoteTypeId == 2) %>% 
+  select(PostId, CreationDate) %>%
+  mutate(CreationDate = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4)))
+isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
+nvId <- unique(v[isNew, "PostId"])
+q <- 
+  filter(Posts, PostTypeId == 1, !Id%in%nvId) %>% 
+  select(Id, Title)
+d <- 
+  filter(v[!isNew,], !PostId%in%nvId) %>% 
+  group_by(PostId) %>% 
+  summarise(OldVotes = n()) %>% 
+  inner_join(q, by = c("PostId" = "Id")) %>% 
+  arrange(-OldVotes) %>% 
+  head(10) %>%
+  select(Title, OldVotes)
+as.data.frame(d)
 
 #..
 
