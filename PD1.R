@@ -270,8 +270,22 @@ vbNames <- subset(aggregate(b$Name, b["Name"], length), x <= 10 & x >= 2, select
 vbUid <- subset(b, Name %in% unlist(vbNames), select = "UserId")
 subset(Users, Id %in% unlist(vbUid), select = c("Id", "DisplayName", "Reputation", "Age", "Location"))
 
-#..
-
+#dplyr
+b <- 
+  filter(Badges, Class == 1) %>%
+  select(Name, UserId)
+vbNames <-
+  group_by(b, Name) %>%
+  summarise(Count = n()) %>%
+  filter(2 <= Count, Count <= 10) %>%
+  select(Name)
+vbUid <- 
+  filter(b, Name %in% unlist(vbNames)) %>%
+  select(UserId)
+d <-
+  filter(Users, Id %in% unlist(vbUid)) %>%
+  select(Id, DisplayName, Reputation, Age, Location)
+as.data.frame(d)
 
 #..
 
@@ -321,8 +335,9 @@ q_ov <- q_ov[,c(2,3)]
 colnames(q_ov) <- c("Title", "OldVotes") 
 head(q_ov[order(-q_ov$OldVotes),], 10)
 
+#dplyr
 
-#..
+
 
 
 #..
