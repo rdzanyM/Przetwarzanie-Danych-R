@@ -9,6 +9,8 @@ Badges <- read.csv("Badges.csv")
 
 #install.packages("sqldf")
 #library(sqldf)
+#install.packages("dplyr")
+#library(dplyr)
 
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
@@ -37,7 +39,22 @@ g <- g[,c(3,1,4,5,6,2)]
 colnames(g) <- c("DisplayName", "Id", "Location", "FavoriteTotal", "MostFavoriteQuestion", "MostFavoriteQuestionLikes")
 g[order(-g$FavoriteTotal),]
 
-#..
+#dplyr
+q_by_u <- 
+  filter(Posts, PostTypeId == 1, !is.na(FavoriteCount), !is.na(OwnerUserId))[c("OwnerUserId", "Title", "FavoriteCount")] %>% 
+  group_by(OwnerUserId)
+sc <- 
+  q_by_u %>% 
+  slice(which.max(FavoriteCount))
+d <- 
+  q_by_u %>% 
+  summarise(FavoriteTotal = sum(FavoriteCount)) %>% 
+  top_n(10, FavoriteTotal) %>% 
+  inner_join(sc) %>% 
+  inner_join(Users[c("DisplayName", "Id", "Location")], by = c("OwnerUserId" = "Id")) %>% 
+  arrange(-FavoriteTotal) %>% 
+  select(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostFavoriteQuestionLikes = FavoriteCount)
+as.data.frame(d)
 
 
 #..
