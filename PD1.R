@@ -225,8 +225,18 @@ q <- subset(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")]
 q_cts <- merge(q, c, by.x = c("Id", "OwnerUserId"), by.y = c("pid", "uid"))[,c(3,4)]
 head(q_cts[order(-q_cts$CommentsTotalScore),], 10)
 
-#..
-
+#dplyr
+cts <-
+  select(Comments, PostId, UserId, Score) %>%
+  group_by(PostId, UserId) %>%
+  summarise(CommentsTotalScore = sum(Score))
+d <- 
+  filter(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")] %>% 
+  inner_join(cts, by = c("Id" = "PostId", "OwnerUserId" = "UserId")) %>%
+  select(Title, CommentsTotalScore) %>%
+  arrange(-CommentsTotalScore) %>%
+  head(10)
+as.data.frame(d)
 
 #..
 
