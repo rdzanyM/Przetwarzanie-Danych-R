@@ -49,13 +49,12 @@ sc <-
 d <- 
   q_by_u %>% 
   summarise(FavoriteTotal = sum(FavoriteCount)) %>% 
-  top_n(10, FavoriteTotal) %>% 
+  arrange(-FavoriteTotal) %>% 
+  head(10) %>% 
   inner_join(sc) %>% 
   inner_join(Users[c("DisplayName", "Id", "Location")], by = c("OwnerUserId" = "Id")) %>% 
-  arrange(-FavoriteTotal) %>% 
   select(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostFavoriteQuestionLikes = FavoriteCount)
 as.data.frame(d)
-
 
 #..
 
@@ -84,8 +83,16 @@ colnames(p) <- c("ParentId", "PositiveAnswerCount")
 p <- merge(Posts, p, by.x = "Id", by.y = "ParentId")[c("Id", "Title", "PositiveAnswerCount")]
 head(p[order(-p$PositiveAnswerCount),], 10)
 
-#..
-
+#dplyr
+d <- 
+  filter(Posts, PostTypeId == 2, Score > 0) %>%
+  group_by(ParentId) %>%
+  summarise(PositiveAnswerCount = n()) %>%
+  inner_join(Posts, by = c("ParentId" = "Id")) %>%
+  arrange(-PositiveAnswerCount) %>%
+  select(Id = ParentId, Title, PositiveAnswerCount) %>%
+  head(10)
+as.data.frame(d)
 
 #..
 
@@ -119,8 +126,23 @@ g <- aggregate(Count ~ Year, data = q_uv_y, max)
 g <- merge(g, q_uv_y, by = c("Year", "Count"))
 g[,c(3,1,2)]
 
-#..
-
+#dplyr
+q <-
+  filter(Posts, PostTypeId == 1)[c("Id", "Title")]
+q_uv_y <- 
+  filter(Votes, VoteTypeId == 2)[c("PostId", "CreationDate")] %>%
+  mutate(Year = substr(unlist(uv["CreationDate"]), 1, 4)) %>%
+  group_by(PostId, Year) %>%
+  summarise(Count = n()) %>%
+  select(Id = PostId, Year, Count) %>%
+  inner_join(q)
+d <-
+  q_uv_y %>%
+  group_by(Year) %>%
+  summarise(Count = max(Count)) %>% 
+  inner_join(q_uv_y) %>%
+  select(Title, Year, Count)
+as.data.frame(d)
 
 #..
 
