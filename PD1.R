@@ -6,11 +6,19 @@ Users <- read.csv("Users.csv")
 Votes <- read.csv("Votes.csv")
 Comments <- read.csv("Comments.csv")
 Badges <- read.csv("Badges.csv")
+TagsDT <- as.data.table(read.csv("Tags.csv"))
+PostsDT <- as.data.table(read.csv("Posts.csv"))
+UsersDT <- as.data.table(read.csv("Users.csv"))
+VotesDT <- as.data.table(read.csv("Votes.csv"))
+CommentsDT <- as.data.table(read.csv("Comments.csv"))
+BadgesDT <- as.data.table(read.csv("Badges.csv"))
 
 #install.packages("sqldf")
 library(sqldf)
 #install.packages("dplyr")
 library(dplyr)
+#install.packages("data.table")
+library(data.table)
 
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
@@ -56,8 +64,19 @@ d <-
   select(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostFavoriteQuestionLikes = FavoriteCount)
 as.data.frame(d)
 
-#..
-
+#data.table
+q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
+#sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
+sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
+fv <- q[,.(FavoriteTotal = sum(FavoriteCount)), by = OwnerUserId][order(-FavoriteTotal)][1:10]
+setkey(fv, OwnerUserId)
+setkey(UsersDT, Id)
+d <- fv[
+  sd, nomatch = 0][
+    UsersDT[,.(DisplayName, Id, Location)], nomatch = 0][
+        order(-FavoriteTotal)][
+          ,.(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostfavoriteQuestionLikes = FavoriteCount)]
+as.data.frame(d)
 
 #2)
 #Zwraca 10 pytañ (id, tytu³, pac) z najwiêksz¹ liczb¹(oznaczon¹ jako pac) odpowiedzi o dodatnim wyniku na dane pytanie.
@@ -94,7 +113,7 @@ d <-
   head(10)
 as.data.frame(d)
 
-#..
+#data.table
 
 
 #3)
@@ -144,7 +163,7 @@ d <-
   select(Title, Year, Count)
 as.data.frame(d)
 
-#..
+#data.table
 
 
 #4)
@@ -197,7 +216,7 @@ d <-
   arrange(-Difference)
 as.data.frame(d)
 
-#..
+#data.table
 
 
 #5)
@@ -238,7 +257,7 @@ d <-
   head(10)
 as.data.frame(d)
 
-#..
+#data.table
 
 
 #6)
@@ -277,7 +296,7 @@ b <-
 vbNames <-
   group_by(b, Name) %>%
   summarise(Count = n()) %>%
-  filter(2 <= Count, Count <= 10) %>%
+  filter(dplyr::between(Count, 2, 10)) %>%
   select(Name)
 vbUid <- 
   filter(b, Name %in% unlist(vbNames)) %>%
@@ -287,7 +306,7 @@ d <-
   select(Id, DisplayName, Reputation, Age, Location)
 as.data.frame(d)
 
-#..
+#data.table
 
 
 #7)
@@ -355,5 +374,5 @@ d <-
   select(Title, OldVotes)
 as.data.frame(d)
 
-#..
+#data.table
 
