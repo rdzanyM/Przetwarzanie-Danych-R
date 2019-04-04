@@ -126,7 +126,6 @@ d <-
                 ][1:10,.(Id = ParentId, Title, PositiveAnswerCount)]
 as.data.frame(d)
 
-
 #3)
 #Dla ka¿dego roku zwraca tytu³ pytania, które dosta³o najwiêcej upvotów w danym roku, ten rok i t¹ liczbê upVotów.
 sqldf("SELECT Posts.Title,
@@ -163,7 +162,7 @@ q_uv_y <-
   filter(Votes, VoteTypeId == 2) %>%
   select(Id = PostId, CreationDate) %>%
   mutate(Year = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4))) %>%
-  group_by(PostId, Year) %>%
+  group_by(Id, Year) %>%
   summarise(Count = n()) %>%
   inner_join(q)
 d <-
@@ -175,7 +174,14 @@ d <-
 as.data.frame(d)
 
 #data.table
-
+q_uv_y <- 
+  VotesDT[VoteTypeId == 2,.(Id = PostId, Year = substr(unlist(CreationDate), 1, 4))
+          ][,.(Count = .N), by =.(Id, Year)
+            ][PostsDT[PostTypeId == 1,.(Id, Title)], on =.(Id = Id), nomatch = 0]
+d <- 
+  q_uv_y[,.(Count = max(Count)), by = Year
+         ][q_uv_y,.(Title, Year, Count), on =.(Count = Count, Year = Year), nomatch = 0]
+as.data.frame(d)
 
 #4)
 #Zwraca pytania z najwiêksz¹ ró¿nic¹ pomiêdzy wynikiem najwy¿ej punktowanej i zaakceptowanej odpowiedzi,
