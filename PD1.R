@@ -236,11 +236,10 @@ as.data.frame(d)
 #data.table
 setkey(PostsDT, Id)
 a <- PostsDT[PostTypeId == 2,.(Id, ParentId, Score)]
-aa <- a[,.(Id, AcceptedScore = Score)]
 d <- 
   a[,.(MaxScore = max(Score)), keyby = ParentId
     ][PostsDT[PostTypeId == 1 & !is.na(AcceptedAnswerId),.(Id, Title, AcceptedAnswerId)], nomatch = 0
-      ][aa, on =.(AcceptedAnswerId = Id), nomatch = 0
+      ][a[,.(Id, AcceptedScore = Score)], on =.(AcceptedAnswerId = Id), nomatch = 0
         ][,.(Id = ParentId, Title, MaxScore, AcceptedScore, Difference = MaxScore - AcceptedScore)
           ][Difference > 50
             ][order(-Difference)]
@@ -285,7 +284,13 @@ d <-
 as.data.frame(d)
 
 #data.table
-
+setkeyv(PostsDT, c("Id", "OwnerUserId"))
+d <-
+  CommentsDT[,.(CommentsTotalScore = sum(Score)), keyby =.(PostId, UserId)
+             ][PostsDT[PostTypeId == 1,.(Id, Title, OwnerUserId)], nomatch = 0
+               ][order(-CommentsTotalScore),.(Title, CommentsTotalScore)
+                 ][1:10]
+as.data.frame(d)
 
 #6)
 #Zwraca u¿ytkowników (id, nazwê, reputacjê, wiek, lokacjê), którzy s¹ w posiadaniu 'wartoœciowej' odznaki
