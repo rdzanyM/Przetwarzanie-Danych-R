@@ -6,12 +6,6 @@ Users <- read.csv("Users.csv")
 Votes <- read.csv("Votes.csv")
 Comments <- read.csv("Comments.csv")
 Badges <- read.csv("Badges.csv")
-TagsDT <- as.data.table(read.csv("Tags.csv"))
-PostsDT <- as.data.table(read.csv("Posts.csv"))
-UsersDT <- as.data.table(read.csv("Users.csv"))
-VotesDT <- as.data.table(read.csv("Votes.csv"))
-CommentsDT <- as.data.table(read.csv("Comments.csv"))
-BadgesDT <- as.data.table(read.csv("Badges.csv"))
 
 #install.packages("sqldf")
 library(sqldf)
@@ -19,6 +13,12 @@ library(sqldf)
 library(dplyr)
 #install.packages("data.table")
 library(data.table)
+TagsDT <- as.data.table(read.csv("Tags.csv"))
+PostsDT <- as.data.table(read.csv("Posts.csv"))
+UsersDT <- as.data.table(read.csv("Users.csv"))
+VotesDT <- as.data.table(read.csv("Votes.csv"))
+CommentsDT <- as.data.table(read.csv("Comments.csv"))
+BadgesDT <- as.data.table(read.csv("Badges.csv"))
 
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
@@ -68,14 +68,17 @@ as.data.frame(d)
 q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
 #sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
 sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
-fv <- q[,.(FavoriteTotal = sum(FavoriteCount)), by = OwnerUserId][order(-FavoriteTotal)][1:10]
+fv <- 
+  q[,.(FavoriteTotal = sum(FavoriteCount)), by = OwnerUserId
+    ][order(-FavoriteTotal)
+      ][1:10]
 setkey(fv, OwnerUserId)
 setkey(UsersDT, Id)
-d <- fv[
-  sd, nomatch = 0][
-    UsersDT[,.(DisplayName, Id, Location)], nomatch = 0][
-        order(-FavoriteTotal)][
-          ,.(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostfavoriteQuestionLikes = FavoriteCount)]
+d <- 
+  fv[sd, nomatch = 0
+     ][UsersDT[,.(DisplayName, Id, Location)], nomatch = 0
+       ][order(-FavoriteTotal)
+         ][,.(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostfavoriteQuestionLikes = FavoriteCount)]
 as.data.frame(d)
 
 #2)
@@ -114,6 +117,14 @@ d <-
 as.data.frame(d)
 
 #data.table
+setkey(PostsDT, Id)
+d <-
+  PostsDT[PostTypeId == 2 & Score > 0
+          ][,.(PositiveAnswerCount = .N), keyby = ParentId
+            ][PostsDT, nomatch = 0
+              ][order(-PositiveAnswerCount)
+                ][1:10,.(Id = ParentId, Title, PositiveAnswerCount)]
+as.data.frame(d)
 
 
 #3)
