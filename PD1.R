@@ -411,4 +411,15 @@ d <-
 as.data.frame(d)
 
 #data.table
-
+v <- VotesDT[VoteTypeId == 2,.(PostId, Year = substr(unlist(CreationDate), 1, 4))]
+isNew <- v$Year == 2017 | v$Year == 2016
+nvId <- unlist(unique(v[isNew, "PostId"]))
+setkey(nvId, PostId)
+q <- PostsDT[PostTypeId == 1 & !Id%in%nvId,.(Id, Title)]
+setkey(q, Id)
+d <-
+  v[!isNew & !PostId%in%nvId,.(OldVotes = .N), keyby = PostId
+    ][q, nomatch = 0
+      ][order(-OldVotes),.(Title, OldVotes)
+        ][1:10]
+as.data.frame(d)
