@@ -234,7 +234,17 @@ d <-
 as.data.frame(d)
 
 #data.table
-
+setkey(PostsDT, Id)
+a <- PostsDT[PostTypeId == 2,.(Id, ParentId, Score)]
+aa <- a[,.(Id, AcceptedScore = Score)]
+d <- 
+  a[,.(MaxScore = max(Score)), keyby = ParentId
+    ][PostsDT[PostTypeId == 1 & !is.na(AcceptedAnswerId),.(Id, Title, AcceptedAnswerId)], nomatch = 0
+      ][aa, on =.(AcceptedAnswerId = Id), nomatch = 0
+        ][,.(Id = ParentId, Title, MaxScore, AcceptedScore, Difference = MaxScore - AcceptedScore)
+          ][Difference > 50
+            ][order(-Difference)]
+as.data.frame(d)
 
 #5)
 #Zwraca 10 pytañ (tytu³ pytania, 'wynik komentarzy autora') z najwiêkszym 'wynikiem komentarzy autora',
