@@ -30,7 +30,26 @@ same <- function(x, y)
 }
 same_df <- function(x, y, uniqueCol)
 {
-  all(cmp(x[order(x[[uniqueCol]]),], y[order(y[[uniqueCol]]),]))
+  all(same(x[order(x[[uniqueCol]]),], y[order(y[[uniqueCol]]),]))
+}
+
+test <- function(z, uniqCol)
+{
+  df1 <- z("sqldf")
+  df2 <- z("baser")
+  df3 <- z("dplyr")
+  df4 <- z("data.table")
+  all(df1 == df2)
+  all(df1 == df3)
+  all(df1 == df4)
+  stopifnot(same_df(df1, df2, uniqCol) & same_df(df1, df3, uniqCol) & same_df(df1, df4, uniqCol))
+  microbenchmark(
+    sqldf=z("sqldf"),
+    baser=z("baser"),
+    dplyr=z("dplyr"),
+    data.table=z("data.table"),
+    times = 8
+  )
 }
 
 #1)
@@ -241,90 +260,70 @@ Z4 <- function (x)
   if(x == "sqldf")
   {
     return(
-      sqldf("SELECT Users.DisplayName,
-            Users.Id,
-            Users.Location,
-            SUM(Posts.FavoriteCount) AS FavoriteTotal,
-            Posts.Title AS MostFavoriteQuestion,
-            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+      sqldf("SELECT Questions.Id,
+            Questions.Title,
+            BestAnswers.MaxScore,
+            Posts.Score AS AcceptedScore,
+            BestAnswers.MaxScore-Posts.Score AS Difference
+            FROM (
+            SELECT Id, ParentId, MAX(Score) AS MaxScore
             FROM Posts
-            JOIN Users ON Users.Id=Posts.OwnerUserId
-            WHERE Posts.PostTypeId=1
-            GROUP BY OwnerUserId
-            ORDER BY FavoriteTotal DESC
-            LIMIT 10"))
+            WHERE PostTypeId==2
+            GROUP BY ParentId
+            ) AS BestAnswers
+            JOIN (
+            SELECT * FROM Posts
+            WHERE PostTypeId==1
+            ) AS Questions
+            ON Questions.Id=BestAnswers.ParentId
+            JOIN Posts ON Questions.AcceptedAnswerId=Posts.Id
+            WHERE Difference>50
+            ORDER BY Difference DESC"))
   }
   if(x == "baser")
   {
+    q <- subset(Posts, PostTypeId == 1 & !is.na(AcceptedAnswerId))[c("Id", "Title", "AcceptedAnswerId")]
+    a <- subset(Posts, PostTypeId == 2)[c("Id", "ParentId", "Score")]
+    ba <- aggregate(Score ~ ParentId, data = a, max)
+    q_ba <- merge(q, ba, by.x = "Id", by.y = "ParentId")
+    aa <- a[c("Id", "Score")]
+    colnames(aa) <- c("Id", "AcceptedScore")
+    q_ba_aa <- merge(q_ba, aa, by.x = "AcceptedAnswerId", by.y = "Id")
+    q_d = cbind(q_ba_aa, q_ba_aa["Score"] - q_ba_aa["AcceptedScore"])
+    colnames(q_d) <- c("aaid", "Id", "Title", "MaxScore", "AcceptedScore", "Difference")
+    q_d <- subset(q_d, Difference > 50, select = -aaid)
+    return(q_d[order(-q_d$Difference),])
   }
   if(x == "dplyr")
   {
+    q <- filter(Posts, PostTypeId == 1, !is.na(AcceptedAnswerId))[c("Id", "Title", "AcceptedAnswerId")]
+    a <- filter(Posts, PostTypeId == 2)[c("Id", "ParentId", "Score")]
+    aa <- select(a, Id, AcceptedScore = Score)
+    d <- 
+      group_by(a, ParentId) %>% 
+      summarise(MaxScore = max(Score)) %>%
+      inner_join(q, by = c("ParentId" = "Id")) %>%
+      inner_join(aa, by = c("AcceptedAnswerId" = "Id")) %>%
+      mutate(Difference = MaxScore - AcceptedScore) %>%
+      filter(Difference > 50) %>%
+      select(Id = ParentId, Title, MaxScore, AcceptedScore, Difference) %>%
+      arrange(-Difference)
     return(as.data.frame(d))
   }
   if(x == "data.table")
   {
+    a <- PostsDT[PostTypeId == 2,.(Id, ParentId, Score)]
+    d <- 
+      a[,.(MaxScore = max(Score)), keyby = ParentId
+        ][PostsDT[PostTypeId == 1 & !is.na(AcceptedAnswerId),.(Id, Title, AcceptedAnswerId)], nomatch = 0
+          ][a[,.(Id, AcceptedScore = Score)], on =.(AcceptedAnswerId = Id), nomatch = 0
+            ][,.(Id = ParentId, Title, MaxScore, AcceptedScore, Difference = MaxScore - AcceptedScore)
+              ][Difference > 50
+                ][order(-Difference)]
     return(as.data.frame(d))
   }
   stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
 }
-sqldf("SELECT Questions.Id,
-       Questions.Title,
-       BestAnswers.MaxScore,
-       Posts.Score AS AcceptedScore,
-       BestAnswers.MaxScore-Posts.Score AS Difference
-       FROM (
-       SELECT Id, ParentId, MAX(Score) AS MaxScore
-       FROM Posts
-       WHERE PostTypeId==2
-       GROUP BY ParentId
-       ) AS BestAnswers
-       JOIN (
-       SELECT * FROM Posts
-       WHERE PostTypeId==1
-       ) AS Questions
-       ON Questions.Id=BestAnswers.ParentId
-       JOIN Posts ON Questions.AcceptedAnswerId=Posts.Id
-       WHERE Difference>50
-       ORDER BY Difference DESC")
-#basic
-q <- subset(Posts, PostTypeId == 1 & !is.na(AcceptedAnswerId))[c("Id", "Title", "AcceptedAnswerId")]
-a <- subset(Posts, PostTypeId == 2)[c("Id", "ParentId", "Score")]
-ba <- aggregate(Score ~ ParentId, data = a, max)
-q_ba <- merge(q, ba, by.x = "Id", by.y = "ParentId")
-aa <- a[c("Id", "Score")]
-colnames(aa) <- c("Id", "AcceptedScore")
-q_ba_aa <- merge(q_ba, aa, by.x = "AcceptedAnswerId", by.y = "Id")
-q_d = cbind(q_ba_aa, q_ba_aa["Score"] - q_ba_aa["AcceptedScore"])
-colnames(q_d) <- c("aaid", "Id", "Title", "MaxScore", "AcceptedScore", "Difference")
-q_d <- subset(q_d, Difference > 50, select = -aaid)
-q_d[order(-q_d$Difference),]
-
-#dplyr
-q <- filter(Posts, PostTypeId == 1, !is.na(AcceptedAnswerId))[c("Id", "Title", "AcceptedAnswerId")]
-a <- filter(Posts, PostTypeId == 2)[c("Id", "ParentId", "Score")]
-aa <- select(a, Id, AcceptedScore = Score)
-d <- 
-  group_by(a, ParentId) %>% 
-  summarise(MaxScore = max(Score)) %>%
-  inner_join(q, by = c("ParentId" = "Id")) %>%
-  inner_join(aa, by = c("AcceptedAnswerId" = "Id")) %>%
-  mutate(Difference = MaxScore - AcceptedScore) %>%
-  filter(Difference > 50) %>%
-  select(Id = ParentId, Title, MaxScore, AcceptedScore, Difference) %>%
-  arrange(-Difference)
-as.data.frame(d)
-
-#data.table
-#setkey(PostsDT, Id) jeœli nie ustawione wczeœniej
-a <- PostsDT[PostTypeId == 2,.(Id, ParentId, Score)]
-d <- 
-  a[,.(MaxScore = max(Score)), keyby = ParentId
-    ][PostsDT[PostTypeId == 1 & !is.na(AcceptedAnswerId),.(Id, Title, AcceptedAnswerId)], nomatch = 0
-      ][a[,.(Id, AcceptedScore = Score)], on =.(AcceptedAnswerId = Id), nomatch = 0
-        ][,.(Id = ParentId, Title, MaxScore, AcceptedScore, Difference = MaxScore - AcceptedScore)
-          ][Difference > 50
-            ][order(-Difference)]
-as.data.frame(d)
 
 #5)
 #Zwraca 10 pytañ (tytu³ pytania, 'wynik komentarzy autora') z najwiêkszym 'wynikiem komentarzy autora',
@@ -334,75 +333,56 @@ Z5 <- function (x)
   if(x == "sqldf")
   {
     return(
-      sqldf("SELECT Users.DisplayName,
-            Users.Id,
-            Users.Location,
-            SUM(Posts.FavoriteCount) AS FavoriteTotal,
-            Posts.Title AS MostFavoriteQuestion,
-            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
-            FROM Posts
-            JOIN Users ON Users.Id=Posts.OwnerUserId
+      sqldf("SELECT Posts.Title,
+            CmtTotScr.CommentsTotalScore
+            FROM (
+            SELECT
+            PostID,
+            UserID,
+            SUM(Score) AS CommentsTotalScore
+            FROM Comments
+            GROUP BY PostID, UserID
+            ) AS CmtTotScr
+            JOIN Posts ON Posts.ID=CmtTotScr.PostID AND Posts.OwnerUserId=CmtTotScr.UserID
             WHERE Posts.PostTypeId=1
-            GROUP BY OwnerUserId
-            ORDER BY FavoriteTotal DESC
+            ORDER BY CmtTotScr.CommentsTotalScore DESC
             LIMIT 10"))
   }
   if(x == "baser")
   {
+    c <- Comments[c("PostId", "UserId", "Score")]
+    c <- aggregate(Score ~ PostId + UserId, data = c, sum)
+    colnames(c) <- c("pid", "uid", "CommentsTotalScore")
+    q <- subset(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")]
+    q_cts <- merge(q, c, by.x = c("Id", "OwnerUserId"), by.y = c("pid", "uid"))[,c(3,4)]
+    return(head(q_cts[order(-q_cts$CommentsTotalScore),], 10))
   }
   if(x == "dplyr")
   {
+    cts <-
+      select(Comments, PostId, UserId, Score) %>%
+      group_by(PostId, UserId) %>%
+      summarise(CommentsTotalScore = sum(Score))
+    d <- 
+      filter(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")] %>% 
+      inner_join(cts, by = c("Id" = "PostId", "OwnerUserId" = "UserId")) %>%
+      select(Title, CommentsTotalScore) %>%
+      arrange(-CommentsTotalScore) %>%
+      head(10)
     return(as.data.frame(d))
   }
   if(x == "data.table")
   {
+    setkeyv(PostsDT, c("Id", "OwnerUserId"))
+    d <-
+      CommentsDT[,.(CommentsTotalScore = sum(Score)), keyby =.(PostId, UserId)
+                 ][PostsDT[PostTypeId == 1,.(Id, Title, OwnerUserId)], nomatch = 0
+                   ][order(-CommentsTotalScore),.(Title, CommentsTotalScore)
+                     ][1:10]
     return(as.data.frame(d))
   }
   stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
 }
-sqldf("SELECT Posts.Title,
-       CmtTotScr.CommentsTotalScore
-       FROM (
-       SELECT
-       PostID,
-       UserID,
-       SUM(Score) AS CommentsTotalScore
-       FROM Comments
-       GROUP BY PostID, UserID
-       ) AS CmtTotScr
-       JOIN Posts ON Posts.ID=CmtTotScr.PostID AND Posts.OwnerUserId=CmtTotScr.UserID
-       WHERE Posts.PostTypeId=1
-       ORDER BY CmtTotScr.CommentsTotalScore DESC
-       LIMIT 10")
-#basic
-c <- Comments[c("PostId", "UserId", "Score")]
-c <- aggregate(Score ~ PostId + UserId, data = c, sum)
-colnames(c) <- c("pid", "uid", "CommentsTotalScore")
-q <- subset(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")]
-q_cts <- merge(q, c, by.x = c("Id", "OwnerUserId"), by.y = c("pid", "uid"))[,c(3,4)]
-head(q_cts[order(-q_cts$CommentsTotalScore),], 10)
-
-#dplyr
-cts <-
-  select(Comments, PostId, UserId, Score) %>%
-  group_by(PostId, UserId) %>%
-  summarise(CommentsTotalScore = sum(Score))
-d <- 
-  filter(Posts, PostTypeId == 1)[c("Id", "Title", "OwnerUserId")] %>% 
-  inner_join(cts, by = c("Id" = "PostId", "OwnerUserId" = "UserId")) %>%
-  select(Title, CommentsTotalScore) %>%
-  arrange(-CommentsTotalScore) %>%
-  head(10)
-as.data.frame(d)
-
-#data.table
-setkeyv(PostsDT, c("Id", "OwnerUserId"))
-d <-
-  CommentsDT[,.(CommentsTotalScore = sum(Score)), keyby =.(PostId, UserId)
-             ][PostsDT[PostTypeId == 1,.(Id, Title, OwnerUserId)], nomatch = 0
-               ][order(-CommentsTotalScore),.(Title, CommentsTotalScore)
-                 ][1:10]
-as.data.frame(d)
 
 #6)
 #Zwraca u¿ytkowników (id, nazwê, reputacjê, wiek, lokacjê), którzy s¹ w posiadaniu 'wartoœciowej' odznaki
@@ -412,81 +392,62 @@ Z6 <- function (x)
   if(x == "sqldf")
   {
     return(
-      sqldf("SELECT Users.DisplayName,
-            Users.Id,
-            Users.Location,
-            SUM(Posts.FavoriteCount) AS FavoriteTotal,
-            Posts.Title AS MostFavoriteQuestion,
-            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
-            FROM Posts
-            JOIN Users ON Users.Id=Posts.OwnerUserId
-            WHERE Posts.PostTypeId=1
-            GROUP BY OwnerUserId
-            ORDER BY FavoriteTotal DESC
-            LIMIT 10"))
+      sqldf("SELECT DISTINCT Users.Id,
+            Users.DisplayName,
+            Users.Reputation,
+            Users.Age,
+            Users.Location
+            FROM (
+            SELECT
+            Name, UserID
+            FROM Badges
+            WHERE Name IN (
+            SELECT
+            Name
+            FROM Badges
+            WHERE Class=1
+            GROUP BY Name
+            HAVING COUNT(*) BETWEEN 2 AND 10
+            )
+            AND Class=1
+            ) AS ValuableBadges
+            JOIN Users ON ValuableBadges.UserId=Users.Id"))
   }
   if(x == "baser")
   {
+    b <- subset(Badges, Class == 1, select = c("Name", "UserId"))
+    vbNames <- subset(aggregate(b$Name, b["Name"], length), x <= 10 & x >= 2, select = "Name")
+    vbUid <- subset(b, Name %in% unlist(vbNames), select = "UserId")
+    return(subset(Users, Id %in% unlist(vbUid), select = c("Id", "DisplayName", "Reputation", "Age", "Location")))
   }
   if(x == "dplyr")
   {
+    b <- 
+      filter(Badges, Class == 1) %>%
+      select(Name, UserId)
+    vbNames <-
+      group_by(b, Name) %>%
+      summarise(Count = n()) %>%
+      filter(dplyr::between(Count, 2, 10)) %>%
+      select(Name)
+    vbUid <- 
+      filter(b, Name %in% unlist(vbNames)) %>%
+      select(UserId)
+    d <-
+      filter(Users, Id %in% unlist(vbUid)) %>%
+      select(Id, DisplayName, Reputation, Age, Location)
     return(as.data.frame(d))
   }
   if(x == "data.table")
   {
+    b <- BadgesDT[Class == 1,.(Name, UserId)]
+    vbNames <- b[,.(Count = .N), by = Name][data.table::between(Count, 2, 10), Name]
+    vbUid <- b[Name %in% unlist(vbNames), UserId]
+    d <- UsersDT[Id %in% unlist(vbUid),.(Id, DisplayName, Reputation, Age, Location)]
     return(as.data.frame(d))
   }
   stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
 }
-sqldf("SELECT DISTINCT Users.Id,
-       Users.DisplayName,
-       Users.Reputation,
-       Users.Age,
-       Users.Location
-       FROM (
-         SELECT
-         Name, UserID
-         FROM Badges
-         WHERE Name IN (
-           SELECT
-           Name
-           FROM Badges
-           WHERE Class=1
-           GROUP BY Name
-           HAVING COUNT(*) BETWEEN 2 AND 10
-         )
-         AND Class=1
-       ) AS ValuableBadges
-       JOIN Users ON ValuableBadges.UserId=Users.Id")
-#basic
-b <- subset(Badges, Class == 1, select = c("Name", "UserId"))
-vbNames <- subset(aggregate(b$Name, b["Name"], length), x <= 10 & x >= 2, select = "Name")
-vbUid <- subset(b, Name %in% unlist(vbNames), select = "UserId")
-subset(Users, Id %in% unlist(vbUid), select = c("Id", "DisplayName", "Reputation", "Age", "Location"))
-
-#dplyr
-b <- 
-  filter(Badges, Class == 1) %>%
-  select(Name, UserId)
-vbNames <-
-  group_by(b, Name) %>%
-  summarise(Count = n()) %>%
-  filter(dplyr::between(Count, 2, 10)) %>%
-  select(Name)
-vbUid <- 
-  filter(b, Name %in% unlist(vbNames)) %>%
-  select(UserId)
-d <-
-  filter(Users, Id %in% unlist(vbUid)) %>%
-  select(Id, DisplayName, Reputation, Age, Location)
-as.data.frame(d)
-
-#data.table
-b <- BadgesDT[Class == 1,.(Name, UserId)]
-vbNames <- b[,.(Count = .N), by = Name][data.table::between(Count, 2, 10), Name]
-vbUid <- b[Name %in% unlist(vbNames), UserId]
-d <- UsersDT[Id %in% unlist(vbUid),.(Id, DisplayName, Reputation, Age, Location)]
-as.data.frame(d)
 
 #7)
 #Zwraca 10 pytañ (tytu³ i liczbê 'starych' upvotów) z najwiêksz¹ liczb¹ 'starych' upvotów i bez 'nowych' upvotów.
@@ -496,131 +457,118 @@ Z7 <- function (x)
   if(x == "sqldf")
   {
     return(
-      sqldf("SELECT Users.DisplayName,
-            Users.Id,
-            Users.Location,
-            SUM(Posts.FavoriteCount) AS FavoriteTotal,
-            Posts.Title AS MostFavoriteQuestion,
-            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
-            FROM Posts
-            JOIN Users ON Users.Id=Posts.OwnerUserId
+      sqldf("SELECT Posts.Title,
+       VotesByAge2.OldVotes
+            FROM Posts JOIN (
+            SELECT
+            PostId,
+            MAX(CASE WHEN VoteDate = 'new' THEN Total ELSE 0 END) NewVotes,
+            MAX(CASE WHEN VoteDate = 'old' THEN Total ELSE 0 END) OldVotes,
+            SUM(Total) AS Votes
+            FROM (
+            SELECT
+            PostId,
+            CASE STRFTIME('%Y', CreationDate)
+            WHEN '2017'
+            THEN 'new'
+            WHEN '2016'
+            THEN 'new'
+            ELSE 'old'
+            END VoteDate,
+            COUNT(*) AS Total
+            FROM Votes
+            WHERE VoteTypeId=2
+            GROUP BY PostId, VoteDate
+            ) AS VotesByAge
+            GROUP BY VotesByAge.PostId
+            HAVING NewVotes=0
+            ) AS VotesByAge2 ON VotesByAge2.PostId=Posts.ID
             WHERE Posts.PostTypeId=1
-            GROUP BY OwnerUserId
-            ORDER BY FavoriteTotal DESC
+            ORDER BY VotesByAge2.OldVotes DESC
             LIMIT 10"))
   }
   if(x == "baser")
   {
+    v <- subset(Votes, VoteTypeId == 2, select = c("PostId", "CreationDate"))
+    v["CreationDate"] <- substr(unlist(v["CreationDate"]), 1, 4)
+    isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
+    nvId <- unique(v[isNew, "PostId"])
+    ov <- subset(v[!isNew,], !PostId%in%nvId)
+    q <- subset(Posts, PostTypeId == 1 & !Id%in%nvId)[c("Id", "Title")]
+    g <- aggregate(ov$PostId, ov["PostId"], length)
+    q_ov <- merge(q, g, by.x = "Id", by.y = "PostId")
+    q_ov <- q_ov[,c(2,3)]
+    colnames(q_ov) <- c("Title", "OldVotes") 
+    return(head(q_ov[order(-q_ov$OldVotes),], 10))
   }
   if(x == "dplyr")
   {
+    v <- 
+      filter(Votes, VoteTypeId == 2) %>% 
+      select(PostId, CreationDate) %>%
+      mutate(CreationDate = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4)))
+    isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
+    nvId <- unique(v[isNew, "PostId"])
+    q <- 
+      filter(Posts, PostTypeId == 1, !Id%in%nvId) %>% 
+      select(Id, Title)
+    d <- 
+      filter(v[!isNew,], !PostId%in%nvId) %>% 
+      group_by(PostId) %>% 
+      summarise(OldVotes = n()) %>% 
+      inner_join(q, by = c("PostId" = "Id")) %>% 
+      arrange(-OldVotes) %>% 
+      head(10) %>%
+      select(Title, OldVotes)
     return(as.data.frame(d))
   }
   if(x == "data.table")
   {
+    v <- VotesDT[VoteTypeId == 2,.(PostId, Year = substr(unlist(CreationDate), 1, 4))]
+    isNew <- v$Year == 2017 | v$Year == 2016
+    nvId <- unlist(unique(v[isNew, "PostId"]))
+    nv <- v[isNew, "PostId"][,.N, keyby = PostId]
+    setkey(PostsDT,Id)
+    ov <- v[!isNew, "PostId"][,.(OldVotes = .N), keyby = PostId]
+    d <- 
+      nv[PostsDT[PostTypeId == 1,.(Id, Title)]
+         ][is.na(N)
+           ][ov, nomatch = 0
+             ][order(-OldVotes),.(Title, OldVotes)
+               ][1:10]
+    #Joining is faster(whole method nearly twice as fast), %in% operator is slow, %in% could be better, a hashset would be nice :/
+    #q <- PostsDT[PostTypeId == 1 & !Id%in%nvId,.(Id, Title)]
+    #setkey(q, Id)
+    #d <-
+    #  v[!isNew & !PostId%in%nvId,.(OldVotes = .N), keyby = PostId
+    #    ][q, nomatch = 0
+    #      ][order(-OldVotes),.(Title, OldVotes)
+    #        ][1:10]
     return(as.data.frame(d))
   }
   stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
-}
-sqldf("SELECT Posts.Title,
-       VotesByAge2.OldVotes
-       FROM Posts JOIN (
-         SELECT
-         PostId,
-         MAX(CASE WHEN VoteDate = 'new' THEN Total ELSE 0 END) NewVotes,
-         MAX(CASE WHEN VoteDate = 'old' THEN Total ELSE 0 END) OldVotes,
-         SUM(Total) AS Votes
-         FROM (
-           SELECT
-           PostId,
-           CASE STRFTIME('%Y', CreationDate)
-             WHEN '2017'
-               THEN 'new'
-             WHEN '2016'
-               THEN 'new'
-             ELSE 'old'
-           END VoteDate,
-           COUNT(*) AS Total
-           FROM Votes
-           WHERE VoteTypeId=2
-           GROUP BY PostId, VoteDate
-         ) AS VotesByAge
-         GROUP BY VotesByAge.PostId
-         HAVING NewVotes=0
-       ) AS VotesByAge2 ON VotesByAge2.PostId=Posts.ID
-       WHERE Posts.PostTypeId=1
-       ORDER BY VotesByAge2.OldVotes DESC
-       LIMIT 10")
-#basic
-v <- subset(Votes, VoteTypeId == 2, select = c("PostId", "CreationDate"))
-v["CreationDate"] <- substr(unlist(v["CreationDate"]), 1, 4)
-isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
-nvId <- unique(v[isNew, "PostId"])
-ov <- subset(v[!isNew,], !PostId%in%nvId)
-q <- subset(Posts, PostTypeId == 1 & !Id%in%nvId)[c("Id", "Title")]
-g <- aggregate(ov$PostId, ov["PostId"], length)
-q_ov <- merge(q, g, by.x = "Id", by.y = "PostId")
-q_ov <- q_ov[,c(2,3)]
-colnames(q_ov) <- c("Title", "OldVotes") 
-head(q_ov[order(-q_ov$OldVotes),], 10)
-
-#dplyr
-v <- 
-  filter(Votes, VoteTypeId == 2) %>% 
-  select(PostId, CreationDate) %>%
-  mutate(CreationDate = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4)))
-isNew <- v$CreationDate == 2017 | v$CreationDate == 2016
-nvId <- unique(v[isNew, "PostId"])
-q <- 
-  filter(Posts, PostTypeId == 1, !Id%in%nvId) %>% 
-  select(Id, Title)
-d <- 
-  filter(v[!isNew,], !PostId%in%nvId) %>% 
-  group_by(PostId) %>% 
-  summarise(OldVotes = n()) %>% 
-  inner_join(q, by = c("PostId" = "Id")) %>% 
-  arrange(-OldVotes) %>% 
-  head(10) %>%
-  select(Title, OldVotes)
-as.data.frame(d)
-
-#data.table
-v <- VotesDT[VoteTypeId == 2,.(PostId, Year = substr(unlist(CreationDate), 1, 4))]
-isNew <- v$Year == 2017 | v$Year == 2016
-nvId <- unlist(unique(v[isNew, "PostId"]))
-setkey(nvId, PostId)
-q <- PostsDT[PostTypeId == 1 & !Id%in%nvId,.(Id, Title)]
-setkey(q, Id)
-d <-
-  v[!isNew & !PostId%in%nvId,.(OldVotes = .N), keyby = PostId
-    ][q, nomatch = 0
-      ][order(-OldVotes),.(Title, OldVotes)
-        ][1:10]
-as.data.frame(d)
-
-
-test <- function(z, uniqCol)
-{
-  df1 <- z("sqldf")
-  df2 <- z("baser")
-  df3 <- z("dplyr")
-  df4 <- z("data.table")
-  all(df1 == df2)
-  all(df1 == df3)
-  all(df1 == df4)
-  stopifnot(same_df(df1, df2, uniqCol) & same_df(df1, df3, uniqCol) & same_df(df1, df4, uniqCol))
-  microbenchmark(
-    sqldf=z("sqldf"),
-    baser=z("baser"),
-    dplyr=z("dplyr"),
-    data.table=z("data.table"),
-    times = 8
-  )
 }
 
 #test1
 test(Z1, "Id")
 
+#test2
+test(Z2, "Id")
+
+#test3
+test(Z3, "Title")
+
+#test4
+test(Z4, "Id")
+
+#test5
+test(Z5, "Title")
+
+#test6
+test(Z6, "Id")
+
+#test7
+test(Z7, "Title")
 
 
 
