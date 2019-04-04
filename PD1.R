@@ -15,177 +15,249 @@ library(dplyr)
 library(data.table)
 TagsDT <- as.data.table(read.csv("Tags.csv"))
 PostsDT <- as.data.table(read.csv("Posts.csv"))
+setkey(PostsDT, Id)
 UsersDT <- as.data.table(read.csv("Users.csv"))
+setkey(UsersDT, Id)
 VotesDT <- as.data.table(read.csv("Votes.csv"))
 CommentsDT <- as.data.table(read.csv("Comments.csv"))
 BadgesDT <- as.data.table(read.csv("Badges.csv"))
+#install.packages("microbenchmark")
+library(microbenchmark)
 
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
 #Zwraca nazwê, id, lokacjê u¿ytkownika, sumê dodañ do ulubionych dla wszystkich zadanych przez niego pytañ,
 #,pytanie tego u¿ytkownika dodane do ulubionych najwiêksz¹ liczbê razy i liczbê dodañ do ulubionych dla tego pytania
-sqldf("SELECT Users.DisplayName,
-       Users.Id,
-       Users.Location,
-       SUM(Posts.FavoriteCount) AS FavoriteTotal,
-       Posts.Title AS MostFavoriteQuestion,
-       MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
-       FROM Posts
-       JOIN Users ON Users.Id=Posts.OwnerUserId
-       WHERE Posts.PostTypeId=1
-       GROUP BY OwnerUserId
-       ORDER BY FavoriteTotal DESC
-       LIMIT 10")
-#basic
-q <- subset(Posts, PostTypeId == 1 & !is.na(FavoriteCount))[c("OwnerUserId", "Title", "FavoriteCount")]
-u_q <- merge(Users, q, by.x = "Id", by.y = "OwnerUserId")[c("DisplayName", "Id", "Location", "FavoriteCount", "Title")]
-g <- do.call(data.frame, aggregate(u_q["FavoriteCount"], u_q[c("DisplayName", "Id", "Location")], function(x)
-  c(sum = sum(x), max = max(x))))
-g <- head(g[order(-g$FavoriteCount.sum),], 10)
-g <- merge(g, q, by.x = c("Id", "FavoriteCount.max"), by.y = c("OwnerUserId", "FavoriteCount"))
-g <- g[,c(3,1,4,5,6,2)]
-colnames(g) <- c("DisplayName", "Id", "Location", "FavoriteTotal", "MostFavoriteQuestion", "MostFavoriteQuestionLikes")
-g[order(-g$FavoriteTotal),]
-
-#dplyr
-q_by_u <- 
-  filter(Posts, PostTypeId == 1, !is.na(FavoriteCount), !is.na(OwnerUserId))[c("OwnerUserId", "Title", "FavoriteCount")] %>% 
-  group_by(OwnerUserId)
-sc <- 
-  q_by_u %>% 
-  slice(which.max(FavoriteCount))
-d <- 
-  q_by_u %>% 
-  summarise(FavoriteTotal = sum(FavoriteCount)) %>% 
-  arrange(-FavoriteTotal) %>% 
-  head(10) %>% 
-  inner_join(sc) %>% 
-  inner_join(Users[c("DisplayName", "Id", "Location")], by = c("OwnerUserId" = "Id")) %>% 
-  select(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostFavoriteQuestionLikes = FavoriteCount)
-as.data.frame(d)
-
-#data.table
-q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
-#sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
-sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
-fv <- 
-  q[,.(FavoriteTotal = sum(FavoriteCount)), by = OwnerUserId
-    ][order(-FavoriteTotal)
-      ][1:10]
-setkey(fv, OwnerUserId)
-setkey(UsersDT, Id)
-d <- 
-  fv[sd, nomatch = 0
-     ][UsersDT[,.(DisplayName, Id, Location)], nomatch = 0
-       ][order(-FavoriteTotal)
-         ][,.(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostfavoriteQuestionLikes = FavoriteCount)]
-as.data.frame(d)
+Z1 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+    sqldf("SELECT Users.DisplayName,
+           Users.Id,
+           Users.Location,
+           SUM(Posts.FavoriteCount) AS FavoriteTotal,
+           Posts.Title AS MostFavoriteQuestion,
+           MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+           FROM Posts
+           JOIN Users ON Users.Id=Posts.OwnerUserId
+           WHERE Posts.PostTypeId=1
+           GROUP BY OwnerUserId
+           ORDER BY FavoriteTotal DESC
+           LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+    q <- subset(Posts, PostTypeId == 1 & !is.na(FavoriteCount))[c("OwnerUserId", "Title", "FavoriteCount")]
+    u_q <- merge(Users, q, by.x = "Id", by.y = "OwnerUserId")[c("DisplayName", "Id", "Location", "FavoriteCount", "Title")]
+    g <- do.call(data.frame, aggregate(u_q["FavoriteCount"], u_q[c("DisplayName", "Id", "Location")], function(x)
+      c(sum = sum(x), max = max(x))))
+    g <- head(g[order(-g$FavoriteCount.sum),], 10)
+    g <- merge(g, q, by.x = c("Id", "FavoriteCount.max"), by.y = c("OwnerUserId", "FavoriteCount"))
+    g <- g[,c(3,1,4,5,6,2)]
+    colnames(g) <- c("DisplayName", "Id", "Location", "FavoriteTotal", "MostFavoriteQuestion", "MostFavoriteQuestionLikes")
+    return(g[order(-g$FavoriteTotal),])
+  }
+  if(x == "dplyr")
+  {
+    q_by_u <- 
+      filter(Posts, PostTypeId == 1, !is.na(FavoriteCount), !is.na(OwnerUserId))[c("OwnerUserId", "Title", "FavoriteCount")] %>% 
+      group_by(OwnerUserId)
+    sc <- 
+      q_by_u %>% 
+      slice(which.max(FavoriteCount))
+    d <- 
+      q_by_u %>% 
+      summarise(FavoriteTotal = sum(FavoriteCount)) %>% 
+      arrange(-FavoriteTotal) %>% 
+      head(10) %>% 
+      inner_join(sc) %>% 
+      inner_join(Users[c("DisplayName", "Id", "Location")], by = c("OwnerUserId" = "Id")) %>% 
+      select(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostFavoriteQuestionLikes = FavoriteCount)
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    #setkey(UsersDT, Id) jeœli nie ustawione wczeœniej
+    q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
+    #sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
+    sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
+    fv <- 
+      q[,.(FavoriteTotal = sum(FavoriteCount)), by = OwnerUserId
+        ][order(-FavoriteTotal)
+          ][1:10]
+    setkey(fv, OwnerUserId)
+    d <- 
+      fv[sd, nomatch = 0
+         ][UsersDT[,.(DisplayName, Id, Location)], nomatch = 0
+           ][order(-FavoriteTotal)
+             ][,.(DisplayName, Id = OwnerUserId, Location, FavoriteTotal, MostFavoriteQuestion = Title, MostfavoriteQuestionLikes = FavoriteCount)]
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 
 #2)
 #Zwraca 10 pytañ (id, tytu³, pac) z najwiêksz¹ liczb¹(oznaczon¹ jako pac) odpowiedzi o dodatnim wyniku na dane pytanie.
-sqldf("SELECT Posts.ID,
-       Posts.Title,
-       Posts2.PositiveAnswerCount
-       FROM Posts
-       JOIN (
-       SELECT
-       Posts.ParentID,
-       COUNT(*) AS PositiveAnswerCount
-       FROM Posts
-       WHERE Posts.PostTypeID=2 AND Posts.Score>0
-       GROUP BY Posts.ParentID
-       ) AS Posts2
-       ON Posts.ID=Posts2.ParentID
-       ORDER BY Posts2.PositiveAnswerCount DESC
-       LIMIT 10")
-#basic
-p <- subset(Posts, PostTypeId == 2 & Score > 0)
-p <- aggregate(p$ParentId, p["ParentId"], length)
-colnames(p) <- c("ParentId", "PositiveAnswerCount")
-p <- merge(Posts, p, by.x = "Id", by.y = "ParentId")[c("Id", "Title", "PositiveAnswerCount")]
-head(p[order(-p$PositiveAnswerCount),], 10)
-
-#dplyr
-d <- 
-  filter(Posts, PostTypeId == 2, Score > 0) %>%
-  group_by(ParentId) %>%
-  summarise(PositiveAnswerCount = n()) %>%
-  inner_join(Posts, by = c("ParentId" = "Id")) %>%
-  arrange(-PositiveAnswerCount) %>%
-  select(Id = ParentId, Title, PositiveAnswerCount) %>%
-  head(10)
-as.data.frame(d)
-
-#data.table
-setkey(PostsDT, Id)
-d <-
-  PostsDT[PostTypeId == 2 & Score > 0
-          ][,.(PositiveAnswerCount = .N), keyby = ParentId
-            ][PostsDT, nomatch = 0
-              ][order(-PositiveAnswerCount)
-                ][1:10,.(Id = ParentId, Title, PositiveAnswerCount)]
-as.data.frame(d)
+Z2 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Posts.ID,
+            Posts.Title,
+            Posts2.PositiveAnswerCount
+            FROM Posts
+            JOIN (
+            SELECT
+            Posts.ParentID,
+            COUNT(*) AS PositiveAnswerCount
+            FROM Posts
+            WHERE Posts.PostTypeID=2 AND Posts.Score>0
+            GROUP BY Posts.ParentID
+            ) AS Posts2
+            ON Posts.ID=Posts2.ParentID
+            ORDER BY Posts2.PositiveAnswerCount DESC
+            LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+    p <- subset(Posts, PostTypeId == 2 & Score > 0)
+    p <- aggregate(p$ParentId, p["ParentId"], length)
+    colnames(p) <- c("ParentId", "PositiveAnswerCount")
+    p <- merge(Posts, p, by.x = "Id", by.y = "ParentId")[c("Id", "Title", "PositiveAnswerCount")]
+    return(head(p[order(-p$PositiveAnswerCount),], 10))
+  }
+  if(x == "dplyr")
+  {
+    d <- 
+      filter(Posts, PostTypeId == 2, Score > 0) %>%
+      group_by(ParentId) %>%
+      summarise(PositiveAnswerCount = n()) %>%
+      inner_join(Posts, by = c("ParentId" = "Id")) %>%
+      arrange(-PositiveAnswerCount) %>%
+      select(Id = ParentId, Title, PositiveAnswerCount) %>%
+      head(10)
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    #setkey(PostsDT, Id) jeœli nie ustawione wczesniej
+    d <-
+      PostsDT[PostTypeId == 2 & Score > 0
+              ][,.(PositiveAnswerCount = .N), keyby = ParentId
+                ][PostsDT, nomatch = 0
+                  ][order(-PositiveAnswerCount)
+                    ][1:10,.(Id = ParentId, Title, PositiveAnswerCount)]
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 
 #3)
 #Dla ka¿dego roku zwraca tytu³ pytania, które dosta³o najwiêcej upvotów w danym roku, ten rok i t¹ liczbê upVotów.
-sqldf("SELECT Posts.Title,
-       UpVotesPerYear.Year,
-       MAX(UpVotesPerYear.Count) AS Count
-       FROM (
-       SELECT
-       PostId,
-       COUNT(*) AS Count,
-       STRFTIME('%Y', Votes.CreationDate) AS Year
-       FROM Votes
-       WHERE VoteTypeId=2
-       GROUP BY PostId, Year
-       ) AS UpVotesPerYear
-       JOIN Posts ON Posts.Id=UpVotesPerYear.PostId
-       WHERE Posts.PostTypeId=1
-       GROUP BY Year")
-#basic
-uv <- subset(Votes, VoteTypeId == 2)[c("PostId", "CreationDate")]
-#uv["CreationDate"] <- format(as.Date(unlist(uv["CreationDate"])), "%Y") #bardzo wolne
-uv["CreationDate"] <- substr(unlist(uv["CreationDate"]), 1, 4)
-uv_y <- aggregate(cbind(PostId)~PostId+CreationDate, uv, length)
-colnames(uv_y) <- c("Id", "Year", "Count")
-q <- subset(Posts, PostTypeId == 1)[c("Id", "Title")]
-q_uv_y <- subset(merge(q, uv_y, by = "Id"), select = -Id)
-g <- aggregate(Count ~ Year, data = q_uv_y, max)
-g <- merge(g, q_uv_y, by = c("Year", "Count"))
-g[,c(3,1,2)]
-
-#dplyr
-q <-
-  filter(Posts, PostTypeId == 1)[c("Id", "Title")]
-q_uv_y <- 
-  filter(Votes, VoteTypeId == 2) %>%
-  select(Id = PostId, CreationDate) %>%
-  mutate(Year = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4))) %>%
-  group_by(Id, Year) %>%
-  summarise(Count = n()) %>%
-  inner_join(q)
-d <-
-  q_uv_y %>%
-  group_by(Year) %>%
-  summarise(Count = max(Count)) %>% 
-  inner_join(q_uv_y) %>%
-  select(Title, Year, Count)
-as.data.frame(d)
-
-#data.table
-q_uv_y <- 
-  VotesDT[VoteTypeId == 2,.(Id = PostId, Year = substr(unlist(CreationDate), 1, 4))
-          ][,.(Count = .N), by =.(Id, Year)
-            ][PostsDT[PostTypeId == 1,.(Id, Title)], on =.(Id = Id), nomatch = 0]
-d <- 
-  q_uv_y[,.(Count = max(Count)), by = Year
-         ][q_uv_y,.(Title, Year, Count), on =.(Count = Count, Year = Year), nomatch = 0]
-as.data.frame(d)
+Z3 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Posts.Title,
+            UpVotesPerYear.Year,
+            MAX(UpVotesPerYear.Count) AS Count
+            FROM (
+            SELECT
+            PostId,
+            COUNT(*) AS Count,
+            STRFTIME('%Y', Votes.CreationDate) AS Year
+            FROM Votes
+            WHERE VoteTypeId=2
+            GROUP BY PostId, Year
+            ) AS UpVotesPerYear
+            JOIN Posts ON Posts.Id=UpVotesPerYear.PostId
+            WHERE Posts.PostTypeId=1
+            GROUP BY Year"))
+  }
+  if(x == "baser")
+  {
+    uv <- subset(Votes, VoteTypeId == 2)[c("PostId", "CreationDate")]
+    #uv["CreationDate"] <- format(as.Date(unlist(uv["CreationDate"])), "%Y")  #na górze bardzo wolny sposób,
+    uv["CreationDate"] <- strtoi(substr(unlist(uv["CreationDate"]), 1, 4))    #na dole substr, szybszy ni¿ as.Date,
+                                                                              #funkcje z base i tak s¹ najwolniejsze,
+    uv_y <- aggregate(cbind(PostId)~PostId+CreationDate, uv, length)          #strtoi trochê przyœpiesza aggregate.
+    colnames(uv_y) <- c("Id", "Year", "Count")
+    q <- subset(Posts, PostTypeId == 1)[c("Id", "Title")]
+    q_uv_y <- subset(merge(q, uv_y, by = "Id"), select = -Id)
+    g <- aggregate(Count ~ Year, data = q_uv_y, max)
+    g <- merge(g, q_uv_y, by = c("Year", "Count"))
+    return(g[,c(3,1,2)])
+  }
+  if(x == "dplyr")
+  {
+    q <-
+      filter(Posts, PostTypeId == 1)[c("Id", "Title")]
+    q_uv_y <- 
+      filter(Votes, VoteTypeId == 2) %>%
+      select(Id = PostId, CreationDate) %>%
+      mutate(Year = replace(CreationDate, TRUE, substr(unlist(CreationDate), 1, 4))) %>%
+      group_by(Id, Year) %>%
+      summarise(Count = n()) %>%
+      inner_join(q)
+    d <-
+      q_uv_y %>%
+      group_by(Year) %>%
+      summarise(Count = max(Count)) %>% 
+      inner_join(q_uv_y) %>%
+      select(Title, Year, Count)
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    q_uv_y <- 
+      VotesDT[VoteTypeId == 2,.(Id = PostId, Year = substr(unlist(CreationDate), 1, 4))
+              ][,.(Count = .N), by =.(Id, Year)
+                ][PostsDT[PostTypeId == 1,.(Id, Title)], on =.(Id = Id), nomatch = 0]
+    d <- 
+      q_uv_y[,.(Count = max(Count)), by = Year
+             ][q_uv_y,.(Title, Year, Count), on =.(Count = Count, Year = Year), nomatch = 0]
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 
 #4)
 #Zwraca pytania z najwiêksz¹ ró¿nic¹ pomiêdzy wynikiem najwy¿ej punktowanej i zaakceptowanej odpowiedzi,
 #posortowane malej¹co wzglêdem tej ró¿nicy
+Z4 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Users.DisplayName,
+            Users.Id,
+            Users.Location,
+            SUM(Posts.FavoriteCount) AS FavoriteTotal,
+            Posts.Title AS MostFavoriteQuestion,
+            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+            FROM Posts
+            JOIN Users ON Users.Id=Posts.OwnerUserId
+            WHERE Posts.PostTypeId=1
+            GROUP BY OwnerUserId
+            ORDER BY FavoriteTotal DESC
+            LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+  }
+  if(x == "dplyr")
+  {
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 sqldf("SELECT Questions.Id,
        Questions.Title,
        BestAnswers.MaxScore,
@@ -234,7 +306,7 @@ d <-
 as.data.frame(d)
 
 #data.table
-setkey(PostsDT, Id)
+#setkey(PostsDT, Id) jeœli nie ustawione wczeœniej
 a <- PostsDT[PostTypeId == 2,.(Id, ParentId, Score)]
 d <- 
   a[,.(MaxScore = max(Score)), keyby = ParentId
@@ -248,6 +320,37 @@ as.data.frame(d)
 #5)
 #Zwraca 10 pytañ (tytu³ pytania, 'wynik komentarzy autora') z najwiêkszym 'wynikiem komentarzy autora',
 #gdzie 'wynik komentarzy autora' to suma punktów uzyskanych przez autora pytania w komentarzach do tego pytania
+Z5 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Users.DisplayName,
+            Users.Id,
+            Users.Location,
+            SUM(Posts.FavoriteCount) AS FavoriteTotal,
+            Posts.Title AS MostFavoriteQuestion,
+            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+            FROM Posts
+            JOIN Users ON Users.Id=Posts.OwnerUserId
+            WHERE Posts.PostTypeId=1
+            GROUP BY OwnerUserId
+            ORDER BY FavoriteTotal DESC
+            LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+  }
+  if(x == "dplyr")
+  {
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 sqldf("SELECT Posts.Title,
        CmtTotScr.CommentsTotalScore
        FROM (
@@ -295,6 +398,37 @@ as.data.frame(d)
 #6)
 #Zwraca u¿ytkowników (id, nazwê, reputacjê, wiek, lokacjê), którzy s¹ w posiadaniu 'wartoœciowej' odznaki
 #Odznaka jest 'wartoœciowa' wtedy i tylko wtedy gdy jest z³ota i zosta³a zdobyta przez od 2 do 10 u¿ytkowników
+Z6 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Users.DisplayName,
+            Users.Id,
+            Users.Location,
+            SUM(Posts.FavoriteCount) AS FavoriteTotal,
+            Posts.Title AS MostFavoriteQuestion,
+            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+            FROM Posts
+            JOIN Users ON Users.Id=Posts.OwnerUserId
+            WHERE Posts.PostTypeId=1
+            GROUP BY OwnerUserId
+            ORDER BY FavoriteTotal DESC
+            LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+  }
+  if(x == "dplyr")
+  {
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 sqldf("SELECT DISTINCT Users.Id,
        Users.DisplayName,
        Users.Reputation,
@@ -348,6 +482,37 @@ as.data.frame(d)
 #7)
 #Zwraca 10 pytañ (tytu³ i liczbê 'starych' upvotów) z najwiêksz¹ liczb¹ 'starych' upvotów i bez 'nowych' upvotów.
 #Upvote jest 'nowy' jeœli by³ dodany w 2016 lub 2017 roku. Upvoty które nie s¹ 'nowe', s¹ 'stare'.
+Z7 <- function (x)
+{
+  if(x == "sqldf")
+  {
+    return(
+      sqldf("SELECT Users.DisplayName,
+            Users.Id,
+            Users.Location,
+            SUM(Posts.FavoriteCount) AS FavoriteTotal,
+            Posts.Title AS MostFavoriteQuestion,
+            MAX(Posts.FavoriteCount) AS MostFavoriteQuestionLikes
+            FROM Posts
+            JOIN Users ON Users.Id=Posts.OwnerUserId
+            WHERE Posts.PostTypeId=1
+            GROUP BY OwnerUserId
+            ORDER BY FavoriteTotal DESC
+            LIMIT 10"))
+  }
+  if(x == "baser")
+  {
+  }
+  if(x == "dplyr")
+  {
+    return(as.data.frame(d))
+  }
+  if(x == "data.table")
+  {
+    return(as.data.frame(d))
+  }
+  stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
+}
 sqldf("SELECT Posts.Title,
        VotesByAge2.OldVotes
        FROM Posts JOIN (
@@ -423,3 +588,44 @@ d <-
       ][order(-OldVotes),.(Title, OldVotes)
         ][1:10]
 as.data.frame(d)
+
+#mb1
+microbenchmark(
+  sqldf=Z1("sqldf"),
+  baser=Z1("baser"),
+  dplyr=Z1("dplyr"),
+  data.table=Z1("data.table"),
+  times = 8
+)
+
+#mb2
+microbenchmark(
+  sqldf=Z2("sqldf"),
+  baser=Z2("baser"),
+  dplyr=Z2("dplyr"),
+  data.table=Z2("data.table"),
+  times = 8
+)
+
+#mb3
+microbenchmark(
+  sqldf=Z3("sqldf"),
+  baser=Z3("baser"),
+  dplyr=Z3("dplyr"),
+  data.table=Z3("data.table"),
+  times = 4
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
