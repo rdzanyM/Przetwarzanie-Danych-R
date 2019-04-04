@@ -24,6 +24,15 @@ BadgesDT <- as.data.table(read.csv("Badges.csv"))
 #install.packages("microbenchmark")
 library(microbenchmark)
 
+same <- function(x, y)
+{
+  x == y | is.na(x) & is.na(y)
+}
+same_df <- function(x, y, uniqueCol)
+{
+  all(cmp(x[order(x[[uniqueCol]]),], y[order(y[[uniqueCol]]),]))
+}
+
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
 #Zwraca nazwê, id, lokacjê u¿ytkownika, sumê dodañ do ulubionych dla wszystkich zadanych przez niego pytañ,
@@ -589,33 +598,28 @@ d <-
         ][1:10]
 as.data.frame(d)
 
-#mb1
-microbenchmark(
-  sqldf=Z1("sqldf"),
-  baser=Z1("baser"),
-  dplyr=Z1("dplyr"),
-  data.table=Z1("data.table"),
-  times = 8
-)
 
-#mb2
-microbenchmark(
-  sqldf=Z2("sqldf"),
-  baser=Z2("baser"),
-  dplyr=Z2("dplyr"),
-  data.table=Z2("data.table"),
-  times = 8
-)
+test <- function(z, uniqCol)
+{
+  df1 <- z("sqldf")
+  df2 <- z("baser")
+  df3 <- z("dplyr")
+  df4 <- z("data.table")
+  all(df1 == df2)
+  all(df1 == df3)
+  all(df1 == df4)
+  stopifnot(same_df(df1, df2, uniqCol) & same_df(df1, df3, uniqCol) & same_df(df1, df4, uniqCol))
+  microbenchmark(
+    sqldf=z("sqldf"),
+    baser=z("baser"),
+    dplyr=z("dplyr"),
+    data.table=z("data.table"),
+    times = 8
+  )
+}
 
-#mb3
-microbenchmark(
-  sqldf=Z3("sqldf"),
-  baser=Z3("baser"),
-  dplyr=Z3("dplyr"),
-  data.table=Z3("data.table"),
-  times = 4
-)
-
+#test1
+test(Z1, "Id")
 
 
 
