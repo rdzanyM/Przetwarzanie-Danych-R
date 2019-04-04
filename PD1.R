@@ -339,7 +339,11 @@ d <-
 as.data.frame(d)
 
 #data.table
-
+b <- BadgesDT[Class == 1,.(Name, UserId)]
+vbNames <- b[,.(Count = .N), by = Name][data.table::between(Count, 2, 10), Name]
+vbUid <- b[Name %in% unlist(vbNames), UserId]
+d <- UsersDT[Id %in% unlist(vbUid),.(Id, DisplayName, Reputation, Age, Location)]
+as.data.frame(d)
 
 #7)
 #Zwraca 10 pytañ (tytu³ i liczbê 'starych' upvotów) z najwiêksz¹ liczb¹ 'starych' upvotów i bez 'nowych' upvotów.
