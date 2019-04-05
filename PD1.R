@@ -46,10 +46,10 @@ test <- function(z, uniqueCol)
   all(df1 == df4)
   stopifnot(same_df(df1, df2, uniqueCol) & same_df(df1, df3, uniqueCol) & same_df(df1, df4, uniqueCol))
   microbenchmark(
-    sqldf=z("sqldf"),
-    baser=z("baser"),
-    dplyr=z("dplyr"),
-    data.table=z("data.table"),
+    sqldf = z("sqldf"),
+    baser = z("baser"),
+    dplyr = z("dplyr"),
+    data.table = z("data.table"),
     times = 8
   )
 }
@@ -57,7 +57,7 @@ test <- function(z, uniqueCol)
 #1)
 #Zwraca 10 u¿ytkowników, których pytania zosta³y w sumie dodane do ulubionch najwiêksz¹ iloœæ razy.
 #Zwraca nazwê, id, lokacjê u¿ytkownika, sumê dodañ do ulubionych dla wszystkich zadanych przez niego pytañ,
-#,pytanie tego u¿ytkownika dodane do ulubionych najwiêksz¹ liczbê razy i liczbê dodañ do ulubionych dla tego pytania
+#pytanie tego u¿ytkownika dodane do ulubionych najwiêksz¹ liczbê razy i liczbê dodañ do ulubionych dla tego pytania
 Z1 <- function (x)
 {
   if(x == "sqldf")
