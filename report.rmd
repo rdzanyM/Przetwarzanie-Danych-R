@@ -74,7 +74,7 @@ test <- function(z, uniqCol)
     baser = z("baser"),
     dplyr = z("dplyr"),
     data.table = z("data.table"),
-    times = 8
+    times = 256
   )
 }
 ```
@@ -292,7 +292,7 @@ s <- rewrite(s, p)
 ```
 ***
 ## Zadanie3
-Dla każdego roku zwraca tytuł pytania, które dostało najwięcej upvotów w danym roku, ten rok i tą liczbę upVotów.  
+Dla każdego roku zwraca tytuł pytania, które dostało najwięcej upvotów w danym roku, ten rok i tę liczbę upVotów.  
 
 ### Kod
 ```{r Z3}
@@ -718,16 +718,12 @@ s <- rewrite(s, p)
 ***
 ##Podsumowanie
 Najszybszym z używanych pakietów okazał się `data.table`. Pakiet `sqldf` i funkcje z `base` działały najwolniej.  
-Wyjątkiem jest zadanie 6, gdzie to właśnie funkcje bazowe są najszybsze. W rozwiązaniu zadania 6 nie ma żadnych funkcji typu `merge/aggregate` które nie działają optymalnie. Są za operatory *%in%*, które także działają nieoptymalnie, ale w tym zadaniu po prawej stronie tego operatora są na tyle małe zbiory danych, że nie ma to dużego znaczenia.  
+Wyjątkiem jest zadanie 6, gdzie to właśnie funkcje bazowe są najszybsze. W rozwiązaniu zadania 6 nie ma żadnych funkcji typu `merge/aggregate` które nie działają optymalnie. Są za to operatory *%in%*, które także działają nieoptymalnie, ale w tym zadaniu po prawej stronie tego operatora są na tyle małe zbiory danych, że nie ma to dużego znaczenia.  
 
 ### Benchmark
 ```{r benchmark_summary, echo = FALSE, message = FALSE}
-barplot(as.matrix(s), ylab="Liczba zadań", beside=TRUE, col = c("green", "yellow", "orange", "red"))
-legend("topleft", c("a(fastest)", "b", "c", "d"), fill = c("green", "yellow", "orange", "red"))
+barplot(as.matrix(s), ylab = "Liczba zadań", beside=TRUE, col = c("green", "yellow", "orange", "red"))
+legend("topleft", c("a(fastest)", "b", "c", "d"), bg = "transparent", fill = c("green", "yellow", "orange", "red"))
 s
 ```
-
-
-
-
 
