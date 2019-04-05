@@ -1,6 +1,5 @@
 Testy
 -----
-
 Funkcja `same` sprawdza równość podanych argumentów, zakładając, że
 `NA == NA`.  
 Funkcja `same_df` porównuje ramki danych przy użyciu funkcji `same`.
@@ -10,7 +9,7 @@ unikalne i atomowe.
 Funkcja `test`, korzystając z funkcji `same_df`, sprawdza poprawność
 działania podanej funkcji `z` i zwraca `microbenchmark` wywołań funkcji
 `z` dla różynych sposobów implementacji zapytań SQL.
-
+```r
     same <- function(x, y)
     {
       x == y | is.na(x) & is.na(y)
@@ -35,24 +34,20 @@ działania podanej funkcji `z` i zwraca `microbenchmark` wywołań funkcji
         baser = z("baser"),
         dplyr = z("dplyr"),
         data.table = z("data.table"),
-        times = 8
+        times = 256
       )
     }
-
-------------------------------------------------------------------------
-
+```
 Zadanie1
 --------
-
 Zwraca 10 użytkowników, których pytania zostały w sumie dodane do
 ulubionch największą ilość razy.  
 Zwraca nazwę, id, lokację użytkownika, sumę dodań do ulubionych dla
 wszystkich zadanych przez niego pytań, pytanie tego użytkownika dodane
 do ulubionych największą liczbę razy i liczbę dodań do ulubionych dla
 tego pytania.
-
 ### Kod
-
+```r
     Z1 <- function (x)
     {
       if(x == "sqldf")
@@ -103,7 +98,7 @@ tego pytania.
       }
       if(x == "data.table")
       {
-        #setkey(UsersDT, Id) jeśli nie ustawione wcześniej
+        setkey(UsersDT, Id)
         q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
         #sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
         sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
@@ -121,33 +116,31 @@ tego pytania.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test1-1.png)
 
     ## Unit: milliseconds
-    ##        expr       min        lq      mean    median        uq      max
-    ##       sqldf 318.28182 320.83726 336.51604 330.53678 349.24589 372.6067
-    ##       baser 105.86869 106.48697 109.78338 107.55767 111.49171 121.3257
-    ##       dplyr  61.56932  64.92018  82.00078  67.24304 102.65639 124.7977
-    ##  data.table  17.06427  18.01222  18.81576  18.43118  19.10919  22.3566
-    ##  neval  cld
-    ##      8    d
-    ##      8   c 
-    ##      8  b  
-    ##      8 a
+    ##        expr       min        lq      mean    median        uq       max
+    ##       sqldf 311.24879 311.49984 315.59249 311.75089 317.76433 323.77778
+    ##       baser 106.61793 106.92625 107.18777 107.23457 107.47269 107.71080
+    ##       dplyr  61.69659  61.81442  82.72344  61.93224  93.23686 124.54147
+    ##  data.table  17.55364  18.16966  30.14134  18.78569  36.43519  54.08469
+    ##  neval cld
+    ##      3   c
+    ##      3  b 
+    ##      3 ab 
+    ##      3 a
 
-------------------------------------------------------------------------
 
 Zadanie2
 --------
-
-Zwraca 10 pytań (id, tytuł, *pac*) z największą liczbą(oznaczoną jako
-*pac*) odpowiedzi o dodatnim wyniku na dane pytanie.
-
+Zwraca 10 pytań (id, tytuł, liczba odpowiedzi o dodatnim wyniku na dane
+pytanie) z największą liczbą odpowiedzi o dodatnim wyniku na dane
+pytanie.
 ### Kod
-
+```r
     Z2 <- function (x)
     {
       if(x == "sqldf")
@@ -191,7 +184,7 @@ Zwraca 10 pytań (id, tytuł, *pac*) z największą liczbą(oznaczoną jako
       }
       if(x == "data.table")
       {
-        #setkey(PostsDT, Id) jeśli nie ustawione wczesniej
+        setkey(PostsDT, Id)
         d <-
           PostsDT[PostTypeId == 2 & Score > 0
                   ][,.(PositiveAnswerCount = .N), keyby = ParentId
@@ -202,33 +195,30 @@ Zwraca 10 pytań (id, tytuł, *pac*) z największą liczbą(oznaczoną jako
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test2-1.png)
 
     ## Unit: milliseconds
     ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 219.49338 221.04544 227.63401 222.16972 235.08955 244.96929
-    ##       baser 318.52610 324.73825 348.61253 355.64854 365.45890 378.68274
-    ##       dplyr  49.78999  50.43577  57.55759  50.66588  58.15400  92.15939
-    ##  data.table  23.27170  23.57017  29.19544  24.82171  25.88502  61.73806
-    ##  neval  cld
-    ##      8   c 
-    ##      8    d
-    ##      8  b  
-    ##      8 a
+    ##       sqldf 218.13817 218.66634 219.02221 219.19450 219.46423 219.73396
+    ##       baser 319.35252 321.79855 337.13621 324.24457 346.02805 367.81152
+    ##       dplyr  50.44193  51.30551  63.01088  52.16909  69.29535  86.42162
+    ##  data.table  23.98974  24.39495  25.54598  24.80016  26.32410  27.84804
+    ##  neval cld
+    ##      3  b 
+    ##      3   c
+    ##      3 a  
+    ##      3 a
 
-------------------------------------------------------------------------
 
 Zadanie3
 --------
-
 Dla każdego roku zwraca tytuł pytania, które dostało najwięcej upvotów w
-danym roku, ten rok i tą liczbę upVotów.
-
+danym roku, ten rok i tę liczbę upVotów.
 ### Kod
-
+```r
     Z3 <- function (x)
     {
       if(x == "sqldf")
@@ -296,34 +286,31 @@ danym roku, ten rok i tą liczbę upVotów.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test3-1.png)
 
     ## Unit: milliseconds
-    ##        expr        min         lq      mean    median        uq       max
-    ##       sqldf 1140.08632 1145.27396 1154.2397 1152.4172 1158.1423 1182.1646
-    ##       baser 3011.87294 3042.78549 3127.3802 3130.4972 3215.2582 3230.0867
-    ##       dplyr  310.01880  312.94619  345.6452  360.2093  365.4012  378.0296
-    ##  data.table   87.65859   89.20388  117.6874  116.9251  145.1143  151.3545
+    ##        expr        min         lq      mean     median        uq       max
+    ##       sqldf 1129.60923 1130.40076 1131.1002 1131.19229 1131.8457 1132.4991
+    ##       baser 2793.65266 2881.63722 2916.2323 2969.62178 2977.5221 2985.4224
+    ##       dplyr  357.75648  358.22840  361.0218  358.70032  362.6545  366.6086
+    ##  data.table   91.91799   91.95124  109.3548   91.98449  118.0731  144.1618
     ##  neval  cld
-    ##      8   c 
-    ##      8    d
-    ##      8  b  
-    ##      8 a
+    ##      3   c 
+    ##      3    d
+    ##      3  b  
+    ##      3 a
 
-------------------------------------------------------------------------
 
 Zadanie4
 --------
-
 Zwraca pytania z największą różnicą pomiędzy wynikiem najwyżej
 punktowanej i zaakceptowanej odpowiedzi, posortowane malejąco względem
 tej różnicy.
-
 ### Kod
-
+```r
     Z4 <- function (x)
     {
       if(x == "sqldf")
@@ -393,34 +380,31 @@ tej różnicy.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test4-1.png)
 
     ## Unit: milliseconds
-    ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 291.04344 292.09095 295.64164 295.34718 299.16380 300.88583
-    ##       baser 320.15473 321.13182 340.17800 325.87648 364.91390 377.42483
-    ##       dplyr  44.44265  45.29945  46.08975  46.17063  46.80985  47.71551
-    ##  data.table  27.12055  27.30058  33.31372  28.44517  28.63033  70.63701
+    ##        expr      min        lq      mean    median        uq       max
+    ##       sqldf 287.7213 288.12242 288.44511 288.52352 288.80700 289.09049
+    ##       baser 323.1020 324.18648 327.49799 325.27093 329.69598 334.12103
+    ##       dplyr  45.9789  46.07128  60.86113  46.16365  68.30225  90.44085
+    ##  data.table  25.7830  27.14478  28.23067  28.50655  29.45450  30.40245
     ##  neval cld
-    ##      8  b 
-    ##      8   c
-    ##      8 a  
-    ##      8 a
+    ##      3  b 
+    ##      3   c
+    ##      3 a  
+    ##      3 a
 
-------------------------------------------------------------------------
 
 Zadanie5
 --------
-
 Zwraca 10 pytań (tytuł pytania, *wynik komentarzy autora*) z największym
 *wynikiem komentarzy autora*, gdzie *wynik komentarzy autora* to suma
 punktów uzyskanych przez autora pytania w komentarzach do tego pytania.
-
 ### Kod
-
+```r
     Z5 <- function (x)
     {
       if(x == "sqldf")
@@ -476,35 +460,33 @@ punktów uzyskanych przez autora pytania w komentarzach do tego pytania.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test5-1.png)
 
     ## Unit: milliseconds
     ##        expr        min         lq       mean     median         uq
-    ##       sqldf  533.78307  537.73702  559.72069  541.58649  585.58308
-    ##       baser 3195.24048 3198.05230 3244.53232 3219.06395 3277.97910
-    ##       dplyr  187.28783  191.39306  233.79705  220.86357  262.63871
-    ##  data.table   25.53421   25.77992   26.43551   26.36413   27.05877
+    ##       sqldf  529.57540  531.41259  548.60427  533.24977  558.11870
+    ##       baser 3095.02991 3107.30477 3118.86543 3119.57964 3130.78318
+    ##       dplyr  185.92564  187.95352  206.40851  189.98141  216.64995
+    ##  data.table   24.26563   24.55424   24.69273   24.84285   24.90628
     ##         max neval  cld
-    ##   614.16928     8   c 
-    ##  3370.82738     8    d
-    ##   333.29789     8  b  
-    ##    27.54424     8 a
+    ##   582.98762     3   c 
+    ##  3141.98673     3    d
+    ##   243.31850     3  b  
+    ##    24.96971     3 a
 
-------------------------------------------------------------------------
 
 Zadanie6
 --------
-
 Zwraca użytkowników (id, nazwę, reputację, wiek, lokację), którzy są w
 posiadaniu *wartościowej* odznaki.  
-Odznaka jest *wartościowa* wtedy i tylko wtedy gdy jest złota i została
-zdobyta przez od 2 do 10 użytkowników.
-
+Odznaka jest *wartościowa* wtedy i tylko wtedy gdy jest <span
+style="color:gold">złota</span> i została zdobyta przez od 2 do 10
+użytkowników.
 ### Kod
-
+```r
     Z6 <- function (x)
     {
       if(x == "sqldf")
@@ -566,34 +548,31 @@ zdobyta przez od 2 do 10 użytkowników.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test6-1.png)
 
     ## Unit: milliseconds
     ##        expr        min         lq       mean     median         uq
-    ##       sqldf 248.807472 249.153766 249.864880 249.717239 250.383962
-    ##       baser   3.345936   3.505021   3.771311   3.603963   3.687304
-    ##       dplyr   9.546796   9.663186  10.234356   9.840747  10.141881
-    ##  data.table  10.719311  10.898308  12.121525  11.814849  12.949182
-    ##         max neval  cld
-    ##  251.601636     8    d
-    ##    5.231976     8 a   
-    ##   13.036423     8  b  
-    ##   14.928210     8   c
+    ##       sqldf 244.582972 245.622675 249.706017 246.662378 252.267539
+    ##       baser   3.610326   3.718710   3.818746   3.827094   3.922956
+    ##       dplyr   9.522575   9.574509   9.784365   9.626442   9.915260
+    ##  data.table  10.413045  10.648492  11.057873  10.883939  11.380287
+    ##         max neval cld
+    ##  257.872700     3   b
+    ##    4.018818     3  a 
+    ##   10.204078     3  a 
+    ##   11.876635     3  a
 
-------------------------------------------------------------------------
 
 Zadanie7
 --------
-
 Zwraca 10 pytań (tytuł i liczbę *starych* upvotów) z największą liczbą
 *starych* upvotów i bez *nowych* upvotów. Upvote jest *nowy* jeśli był
 dodany w 2016 lub 2017 roku. Upvoty które nie są *nowe*, są *stare*.
-
 ### Kod
-
+```r
     Z7 <- function (x)
     {
       if(x == "sqldf")
@@ -670,7 +649,7 @@ dodany w 2016 lub 2017 roku. Upvoty które nie są *nowe*, są *stare*.
         isNew <- v$Year == 2017 | v$Year == 2016
         nvId <- unlist(unique(v[isNew, "PostId"]))
         nv <- v[isNew, "PostId"][,.N, keyby = PostId]
-        setkey(PostsDT,Id) #jeśli nie ustawione wcześniej (zmienione w Z5)
+        setkey(PostsDT,Id)
         ov <- v[!isNew, "PostId"][,.(OldVotes = .N), keyby = PostId]
         d <- 
           nv[PostsDT[PostTypeId == 1,.(Id, Title)]
@@ -690,24 +669,39 @@ dodany w 2016 lub 2017 roku. Upvoty które nie są *nowe*, są *stare*.
       }
       stop("Wrong argument. Has to be one of ('sqldf' 'baser' 'dplyr' 'data.table')")
     }
-
+```
 ### Benchmark
 
 ![](report_files/figure-markdown_strict/test7-1.png)
 
     ## Unit: milliseconds
     ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 1101.7817 1102.5441 1127.4662 1105.2578 1114.6022 1273.1400
-    ##       baser  777.0523  798.7175  845.3686  818.3048  852.3223 1047.2073
-    ##       dplyr  182.7176  206.9884  240.8352  235.8924  280.9865  296.2290
-    ##  data.table  109.3563  157.6894  156.8653  162.9099  164.9355  174.4965
-    ##  neval  cld
-    ##      8    d
-    ##      8   c 
-    ##      8  b  
-    ##      8 a
+    ##       sqldf 1085.0832 1089.5892 1092.9599 1094.0951 1096.8983 1099.7015
+    ##       baser  774.4692  816.1940  840.6801  857.9188  873.7856  889.6523
+    ##       dplyr  185.2515  213.6659  241.8929  242.0803  270.2137  298.3470
+    ##  data.table  116.4455  116.6178  131.2931  116.7900  138.7170  160.6439
+    ##  neval cld
+    ##      3   c
+    ##      3  b 
+    ##      3 a  
+    ##      3 a
 
-------------------------------------------------------------------------
 
 Podsumowanie
 ------------
+Najszybszym z używanych pakietów okazał się `data.table`. Pakiet `sqldf`
+i funkcje z `base` działały najwolniej.  
+Wyjątkiem jest zadanie 6, gdzie to właśnie funkcje bazowe są najszybsze.
+W rozwiązaniu zadania 6 nie ma żadnych funkcji typu `merge/aggregate`
+które nie działają optymalnie. Są za to operatory *%in%*, które także
+działają nieoptymalnie, ale w tym zadaniu po prawej stronie tego
+operatora są na tyle małe zbiory danych, że nie ma to dużego znaczenia.
+### Benchmark
+
+![](report_files/figure-markdown_strict/benchmark_summary-1.png)
+
+    ##   sqldf baser dplyr data.table
+    ## a     0     1     4          7
+    ## b     3     2     2          0
+    ## c     4     2     0          0
+    ## d     0     2     0          0
