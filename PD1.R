@@ -23,6 +23,8 @@ CommentsDT <- as.data.table(read.csv("Comments.csv"))
 BadgesDT <- as.data.table(read.csv("Badges.csv"))
 #install.packages("microbenchmark")
 library(microbenchmark)
+#install.packages("ggplot2")
+library(ggplot2)
 
 same <- function(x, y)
 {
@@ -528,7 +530,7 @@ Z7 <- function (x)
     isNew <- v$Year == 2017 | v$Year == 2016
     nvId <- unlist(unique(v[isNew, "PostId"]))
     nv <- v[isNew, "PostId"][,.N, keyby = PostId]
-    setkey(PostsDT,Id)
+    setkey(PostsDT,Id) #jeœli nie ustawione wczeœniej (zmienione w Z5)
     ov <- v[!isNew, "PostId"][,.(OldVotes = .N), keyby = PostId]
     d <- 
       nv[PostsDT[PostTypeId == 1,.(Id, Title)]
@@ -550,34 +552,30 @@ Z7 <- function (x)
 }
 
 #test1
-test(Z1, "Id")
+m <- test(Z1, "Id")
+autoplot(m)
 
 #test2
 test(Z2, "Id")
+autoplot(m)
 
 #test3
 test(Z3, "Title")
+autoplot(m)
 
 #test4
 test(Z4, "Id")
+autoplot(m)
 
 #test5
 test(Z5, "Title")
+autoplot(m)
 
 #test6
 test(Z6, "Id")
+autoplot(m)
 
 #test7
 test(Z7, "Title")
-
-
-
-
-
-
-
-
-
-
-
+autoplot(m)
 
