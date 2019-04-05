@@ -8,7 +8,7 @@ kolumny w podanych ramkach danych, że wartości w tych kolumnach są
 unikalne i atomowe.  
 Funkcja `test`, korzystając z funkcji `same_df`, sprawdza poprawność
 działania podanej funkcji `z` i zwraca `microbenchmark` wywołań funkcji
-`z` dla różynych sposobów implementacji zapytań SQL.
+`z` dla różnych sposobów implementacji zapytań SQL.
 ```r
     same <- function(x, y)
     {
