@@ -118,21 +118,19 @@ tego pytania.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test1-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647161-421b8700-57dd-11e9-8375-4373885f2449.png)
 
     ## Unit: milliseconds
     ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 311.24879 311.49984 315.59249 311.75089 317.76433 323.77778
-    ##       baser 106.61793 106.92625 107.18777 107.23457 107.47269 107.71080
-    ##       dplyr  61.69659  61.81442  82.72344  61.93224  93.23686 124.54147
-    ##  data.table  17.55364  18.16966  30.14134  18.78569  36.43519  54.08469
-    ##  neval cld
-    ##      3   c
-    ##      3  b 
-    ##      3 ab 
-    ##      3 a
-
+    ##       sqldf 307.98127 313.37295 322.02825 315.60815 319.39235 509.72518
+    ##       baser 103.12010 106.13636 116.51952 107.85490 114.15429 299.30195
+    ##       dplyr  59.14506  63.05282  77.21802  65.41900 100.59381 162.65804
+    ##  data.table  15.59986  17.76056  20.68818  18.35502  19.04063  79.32536
+    ##  neval  cld
+    ##    256    d
+    ##    256   c 
+    ##    256  b  
+    ##    256 a
 
 Zadanie2
 --------
@@ -197,21 +195,19 @@ pytanie.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test2-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647335-b524fd80-57dd-11e9-90dd-23f57ed4b0d1.png)
 
     ## Unit: milliseconds
     ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 218.13817 218.66634 219.02221 219.19450 219.46423 219.73396
-    ##       baser 319.35252 321.79855 337.13621 324.24457 346.02805 367.81152
-    ##       dplyr  50.44193  51.30551  63.01088  52.16909  69.29535  86.42162
-    ##  data.table  23.98974  24.39495  25.54598  24.80016  26.32410  27.84804
-    ##  neval cld
-    ##      3  b 
-    ##      3   c
-    ##      3 a  
-    ##      3 a
-
+    ##       sqldf 214.43383 217.95671 220.76567 219.52561 221.09573 263.42449
+    ##       baser 310.62435 318.86808 347.78644 354.10982 357.50727 608.99847
+    ##       dplyr  47.87069  50.00265  57.85319  50.77529  52.48480 299.82991
+    ##  data.table  21.98177  24.02916  33.32505  24.73591  26.05971  84.06222
+    ##  neval  cld
+    ##    256   c 
+    ##    256    d
+    ##    256  b  
+    ##    256 a
 
 Zadanie3
 --------
@@ -288,21 +284,19 @@ danym roku, ten rok i tę liczbę upVotów.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test3-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647454-ff0de380-57dd-11e9-8c0e-a53b41cfad3a.png)
 
     ## Unit: milliseconds
-    ##        expr        min         lq      mean     median        uq       max
-    ##       sqldf 1129.60923 1130.40076 1131.1002 1131.19229 1131.8457 1132.4991
-    ##       baser 2793.65266 2881.63722 2916.2323 2969.62178 2977.5221 2985.4224
-    ##       dplyr  357.75648  358.22840  361.0218  358.70032  362.6545  366.6086
-    ##  data.table   91.91799   91.95124  109.3548   91.98449  118.0731  144.1618
+    ##        expr        min         lq      mean    median        uq       max
+    ##       sqldf 1117.14182 1140.66950 1180.2424 1160.2845 1195.5205 1600.3274
+    ##       baser 2769.37430 2924.50994 3031.2806 3030.5408 3130.5430 3355.6524
+    ##       dplyr  298.84789  309.86895  353.0406  351.7184  361.7882  627.1778
+    ##  data.table   86.56408   91.08848  129.9587  132.6421  144.3365  471.3775
     ##  neval  cld
-    ##      3   c 
-    ##      3    d
-    ##      3  b  
-    ##      3 a
-
+    ##    256   c 
+    ##    256    d
+    ##    256  b  
+    ##    256 a
 
 Zadanie4
 --------
@@ -382,21 +376,19 @@ tej różnicy.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test4-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647496-177dfe00-57de-11e9-944e-c3b720bda0a4.png)
 
     ## Unit: milliseconds
-    ##        expr      min        lq      mean    median        uq       max
-    ##       sqldf 287.7213 288.12242 288.44511 288.52352 288.80700 289.09049
-    ##       baser 323.1020 324.18648 327.49799 325.27093 329.69598 334.12103
-    ##       dplyr  45.9789  46.07128  60.86113  46.16365  68.30225  90.44085
-    ##  data.table  25.7830  27.14478  28.23067  28.50655  29.45450  30.40245
-    ##  neval cld
-    ##      3  b 
-    ##      3   c
-    ##      3 a  
-    ##      3 a
-
+    ##        expr       min        lq      mean    median        uq       max
+    ##       sqldf 285.33072 289.07139 298.40947 292.61193 302.51179 387.49589
+    ##       baser 316.08049 324.03909 354.94032 356.70528 365.78118 649.99912
+    ##       dplyr  43.99228  45.85985  51.09023  46.63762  48.67926 127.28268
+    ##  data.table  24.11865  26.90974  31.62791  27.89032  29.37444  77.57932
+    ##  neval  cld
+    ##    256   c 
+    ##    256    d
+    ##    256  b  
+    ##    256 a
 
 Zadanie5
 --------
@@ -462,21 +454,19 @@ punktów uzyskanych przez autora pytania w komentarzach do tego pytania.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test5-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647527-2c5a9180-57de-11e9-9823-8672dd7a7ff9.png)
 
     ## Unit: milliseconds
-    ##        expr        min         lq       mean     median         uq
-    ##       sqldf  529.57540  531.41259  548.60427  533.24977  558.11870
-    ##       baser 3095.02991 3107.30477 3118.86543 3119.57964 3130.78318
-    ##       dplyr  185.92564  187.95352  206.40851  189.98141  216.64995
-    ##  data.table   24.26563   24.55424   24.69273   24.84285   24.90628
-    ##         max neval  cld
-    ##   582.98762     3   c 
-    ##  3141.98673     3    d
-    ##   243.31850     3  b  
-    ##    24.96971     3 a
-
+    ##        expr        min         lq       mean     median        uq
+    ##       sqldf  520.89609  529.02466  540.80773  531.43578  537.1939
+    ##       baser 3050.96291 3111.06454 3161.79285 3141.44953 3185.5974
+    ##       dplyr  182.36458  189.72482  217.36317  198.30129  242.7616
+    ##  data.table   22.88456   25.32134   29.17579   25.96056   26.7447
+    ##        max neval  cld
+    ##   661.4508   256   c 
+    ##  3646.4635   256    d
+    ##   487.9943   256  b  
+    ##   105.8375   256 a
 
 Zadanie6
 --------
@@ -550,21 +540,19 @@ użytkowników.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test6-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647557-45fbd900-57de-11e9-9dc3-e9a72efa8faf.png)
 
     ## Unit: milliseconds
     ##        expr        min         lq       mean     median         uq
-    ##       sqldf 244.582972 245.622675 249.706017 246.662378 252.267539
-    ##       baser   3.610326   3.718710   3.818746   3.827094   3.922956
-    ##       dplyr   9.522575   9.574509   9.784365   9.626442   9.915260
-    ##  data.table  10.413045  10.648492  11.057873  10.883939  11.380287
-    ##         max neval cld
-    ##  257.872700     3   b
-    ##    4.018818     3  a 
-    ##   10.204078     3  a 
-    ##   11.876635     3  a
-
+    ##       sqldf 243.419079 246.448690 251.278501 248.009990 250.580613
+    ##       baser   3.288460   3.486959   3.942877   3.608684   3.768386
+    ##       dplyr   8.729814   9.719430  11.416260  10.062440  10.407913
+    ##  data.table   9.538996  10.925610  12.034940  11.534242  12.209177
+    ##        max neval cld
+    ##  307.52269   256   c
+    ##   40.91115   256 a  
+    ##   50.26211   256  b 
+    ##   54.73171   256  b
 
 Zadanie7
 --------
@@ -671,21 +659,19 @@ dodany w 2016 lub 2017 roku. Upvoty które nie są *nowe*, są *stare*.
     }
 ```
 ### Benchmark
-
-![](report_files/figure-markdown_strict/test7-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647608-5f9d2080-57de-11e9-9fbd-833ca927ec60.png)
 
     ## Unit: milliseconds
     ##        expr       min        lq      mean    median        uq       max
-    ##       sqldf 1085.0832 1089.5892 1092.9599 1094.0951 1096.8983 1099.7015
-    ##       baser  774.4692  816.1940  840.6801  857.9188  873.7856  889.6523
-    ##       dplyr  185.2515  213.6659  241.8929  242.0803  270.2137  298.3470
-    ##  data.table  116.4455  116.6178  131.2931  116.7900  138.7170  160.6439
-    ##  neval cld
-    ##      3   c
-    ##      3  b 
-    ##      3 a  
-    ##      3 a
-
+    ##       sqldf 1075.4355 1085.5595 1116.9866 1090.9932 1120.5495 1431.2258
+    ##       baser  734.8553  800.2029  829.6848  814.9402  837.0574 1099.5315
+    ##       dplyr  182.2591  231.8440  247.3661  238.0461  245.6042  539.7154
+    ##  data.table  109.8629  117.2362  156.7559  161.9373  166.8749  417.9829
+    ##  neval  cld
+    ##    256    d
+    ##    256   c 
+    ##    256  b  
+    ##    256 a
 
 Podsumowanie
 ------------
@@ -697,11 +683,10 @@ które nie działają optymalnie. Są za to operatory *%in%*, które także
 działają nieoptymalnie, ale w tym zadaniu po prawej stronie tego
 operatora są na tyle małe zbiory danych, że nie ma to dużego znaczenia.
 ### Benchmark
-
-![](report_files/figure-markdown_strict/benchmark_summary-1.png)
+![image](https://user-images.githubusercontent.com/43205483/55647644-78a5d180-57de-11e9-89f4-76904ee2a5e7.png)
 
     ##   sqldf baser dplyr data.table
-    ## a     0     1     4          7
-    ## b     3     2     2          0
-    ## c     4     2     0          0
-    ## d     0     2     0          0
+    ## a     0     1     0          6
+    ## b     0     0     7          1
+    ## c     5     2     0          0
+    ## d     2     4     0          0
