@@ -1,0 +1,89 @@
+---
+title: "PDRPy1"
+author: "\\\\n"
+date: "5 kwietnia 2019"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(stringsAsFactors = FALSE)
+setwd("C:/Users/Michal/Desktop/R/files") #katalog z plikami csv
+Tags <- read.csv("Tags.csv")
+Posts <- read.csv("Posts.csv")
+Users <- read.csv("Users.csv")
+Votes <- read.csv("Votes.csv")
+Comments <- read.csv("Comments.csv")
+Badges <- read.csv("Badges.csv")
+#install.packages("sqldf")
+library(sqldf)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("data.table")
+library(data.table)
+TagsDT <- as.data.table(read.csv("Tags.csv"))
+PostsDT <- as.data.table(read.csv("Posts.csv"))
+setkey(PostsDT, Id)
+UsersDT <- as.data.table(read.csv("Users.csv"))
+setkey(UsersDT, Id)
+VotesDT <- as.data.table(read.csv("Votes.csv"))
+CommentsDT <- as.data.table(read.csv("Comments.csv"))
+BadgesDT <- as.data.table(read.csv("Badges.csv"))
+#install.packages("microbenchmark")
+library(microbenchmark)
+#install.packages("ggplot2")
+library(ggplot2)
+```
+
+## Testy
+Funkcja `same` sprawdza równość podanych argumentów, zakładając, że `NA == NA`.  
+Funkcja `same_df` porównuje ramki danych przy użyciu funkcji `same`. `same_df` przyjmuje także argument `uniqueCol` - jest to nazwa takiej kolumny w podanych ramkach danych, że wartości w tych kolumnach są unikalne i atomowe.  
+Funkcja `test`, korzystając z funkcji `same_df`, sprawdza poprawność działania podanej funkcji `z` i zwraca `microbenchmark` wywołań funkcji `z` dla różynych sposobów implementacji zapytań SQL.  
+```{r tests}
+same <- function(x, y)
+{
+  x == y | is.na(x) & is.na(y)
+}
+same_df <- function(x, y, uniqueCol)
+{
+  all(same(x[order(x[[uniqueCol]]),], y[order(y[[uniqueCol]]),]))
+}
+
+test <- function(z, uniqCol)
+{
+  df1 <- z("sqldf")
+  df2 <- z("baser")
+  df3 <- z("dplyr")
+  df4 <- z("data.table")
+  all(df1 == df2)
+  all(df1 == df3)
+  all(df1 == df4)
+  stopifnot(same_df(df1, df2, uniqCol) & same_df(df1, df3, uniqCol) & same_df(df1, df4, uniqCol))
+  microbenchmark(
+    sqldf=z("sqldf"),
+    baser=z("baser"),
+    dplyr=z("dplyr"),
+    data.table=z("data.table"),
+    times = 8
+  )
+}
+```
+
+## Zadanie1
+```
+
+```
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

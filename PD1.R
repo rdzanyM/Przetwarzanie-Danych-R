@@ -1,5 +1,5 @@
 options(stringsAsFactors = FALSE)
-setwd("C:/Users/Michal/Desktop/R/files")
+setwd("C:/Users/Michal/Desktop/R/files") #directory with csv files
 Tags <- read.csv("Tags.csv")
 Posts <- read.csv("Posts.csv")
 Users <- read.csv("Users.csv")
@@ -35,7 +35,7 @@ same_df <- function(x, y, uniqueCol)
   all(same(x[order(x[[uniqueCol]]),], y[order(y[[uniqueCol]]),]))
 }
 
-test <- function(z, uniqCol)
+test <- function(z, uniqueCol)
 {
   df1 <- z("sqldf")
   df2 <- z("baser")
@@ -44,7 +44,7 @@ test <- function(z, uniqCol)
   all(df1 == df2)
   all(df1 == df3)
   all(df1 == df4)
-  stopifnot(same_df(df1, df2, uniqCol) & same_df(df1, df3, uniqCol) & same_df(df1, df4, uniqCol))
+  stopifnot(same_df(df1, df2, uniqueCol) & same_df(df1, df3, uniqueCol) & same_df(df1, df4, uniqueCol))
   microbenchmark(
     sqldf=z("sqldf"),
     baser=z("baser"),
