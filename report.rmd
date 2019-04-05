@@ -40,6 +40,8 @@ library(microbenchmark)
 #install.packages("ggplot2")
 library(ggplot2)
 #install.packages("multcomp")
+s <- data.frame("sqldf" = rep(0, 4), "baser" = rep(0, 4), "dplyr" = rep(0, 4), "data.table" = rep(0, 4))
+rownames(s) <- c("a", "b", "c", "d")
 ```
 ***
 ## Testy
@@ -76,6 +78,65 @@ test <- function(z, uniqCol)
   )
 }
 ```
+```{r rewrite, include = FALSE}
+rewrite <- function(s, p)
+{
+  if(gsub("\\s", "", p[1, "cld"]) == "a")
+  {
+    s["a","sqldf"] <- s["a","sqldf"] + 1
+  } else if(gsub("\\s", "", p[1, "cld"]) == "b")
+  {
+    s["b","sqldf"] <- s["b","sqldf"] + 1
+  } else if(gsub("\\s", "", p[1, "cld"]) == "c")
+  {
+    s["c","sqldf"] <- s["c","sqldf"] + 1
+  } else if(gsub("\\s", "", p[1, "cld"]) == "d")
+  {
+    s["d","sqldf"] <- s["d","sqldf"] + 1
+  }
+  if(gsub("\\s", "", p[2, "cld"]) == "a")
+  {
+    s["a","baser"] <- s["a","baser"] + 1
+  } else if(gsub("\\s", "", p[2, "cld"]) == "b")
+  {
+    s["b","baser"] <- s["b","baser"] + 1
+  } else if(gsub("\\s", "", p[2, "cld"]) == "c")
+  {
+    s["c","baser"] <- s["c","baser"] + 1
+  } else if(gsub("\\s", "", p[2, "cld"]) == "d")
+  {
+    s["d","baser"] <- s["d","baser"] + 1
+  }
+  if(gsub("\\s", "", p[3, "cld"]) == "a")
+  {
+    s["a","dplyr"] <- s["a","dplyr"] + 1
+  } else if(gsub("\\s", "", p[3, "cld"]) == "b")
+  {
+    s["b","dplyr"] <- s["b","dplyr"] + 1
+  } else if(gsub("\\s", "", p[3, "cld"]) == "c")
+  {
+    s["c","dplyr"] <- s["c","dplyr"] + 1
+  } else if(gsub("\\s", "", p[3, "cld"]) == "d")
+  {
+    s["d","dplyr"] <- s["d","dplyr"] + 1
+  }
+  if(gsub("\\s", "", p[4, "cld"]) == "a")
+  {
+    s["a","data.table"] <- s["a","data.table"] + 1
+  } else if(gsub("\\s", "", p[4, "cld"]) == "b")
+  {
+    s["b","data.table"] <- s["b","data.table"] + 1
+  } else if(gsub("\\s", "", p[4, "cld"]) == "c")
+  {
+    s["c","data.table"] <- s["c","data.table"] + 1
+  } else if(gsub("\\s", "", p[4, "cld"]) == "d")
+  {
+    s["d","data.table"] <- s["d","data.table"] + 1
+  }
+  s
+}
+```
+
 ***
 ## Zadanie1
 Zwraca 10 użytkowników, których pytania zostały w sumie dodane do ulubionch największą ilość razy.  
@@ -133,7 +194,7 @@ Z1 <- function (x)
   }
   if(x == "data.table")
   {
-    #setkey(UsersDT, Id) jeśli nie ustawione wcześniej
+    setkey(UsersDT, Id)
     q <- PostsDT[PostTypeId == 1 & !is.na(FavoriteCount) & !is.na(OwnerUserId),.(OwnerUserId, Title, FavoriteCount)]
     #sd <- q[,.SD[which.max(FavoriteCount)], keyby = OwnerUserId] #wolne :(
     sd <- q[q[,.I[which.max(FavoriteCount)], keyby = OwnerUserId]$V1] #szybkie :)
@@ -157,11 +218,12 @@ Z1 <- function (x)
 ```{r test1, echo = FALSE, message = FALSE}
 m <- test(Z1, "Id")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie2
-Zwraca 10 pytań (id, tytuł, *pac*) z największą liczbą(oznaczoną jako *pac*) odpowiedzi o dodatnim wyniku na dane pytanie.  
+Zwraca 10 pytań (id, tytuł, liczba odpowiedzi o dodatnim wyniku na dane pytanie) z największą liczbą odpowiedzi o dodatnim wyniku na dane pytanie.  
 
 ### Kod
 ```{r Z2}
@@ -208,7 +270,7 @@ Z2 <- function (x)
   }
   if(x == "data.table")
   {
-    #setkey(PostsDT, Id) jeśli nie ustawione wczesniej
+    setkey(PostsDT, Id)
     d <-
       PostsDT[PostTypeId == 2 & Score > 0
               ][,.(PositiveAnswerCount = .N), keyby = ParentId
@@ -225,7 +287,8 @@ Z2 <- function (x)
 ```{r test2, echo = FALSE, message = FALSE}
 m <- test(Z2, "Id")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie3
@@ -306,7 +369,8 @@ Z3 <- function (x)
 ```{r test3, echo = FALSE, message = FALSE}
 m <- test(Z3, "Title")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie4
@@ -389,7 +453,8 @@ Z4 <- function (x)
 ```{r test4, echo = FALSE, message = FALSE}
 m <- test(Z4, "Id")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie5
@@ -458,12 +523,13 @@ Z5 <- function (x)
 ```{r test5, echo = FALSE, message = FALSE}
 m <- test(Z5, "Title")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie6
 Zwraca użytkowników (id, nazwę, reputację, wiek, lokację), którzy są w posiadaniu *wartościowej* odznaki.  
-Odznaka jest *wartościowa* wtedy i tylko wtedy gdy jest złota i została zdobyta przez od 2 do 10 użytkowników.  
+Odznaka jest *wartościowa* wtedy i tylko wtedy gdy jest <span style="color:gold">złota</span> i została zdobyta przez od 2 do 10 użytkowników.  
 
 ### Kod
 ```{r Z6}
@@ -534,7 +600,8 @@ Z6 <- function (x)
 ```{r test6, echo = FALSE, message = FALSE}
 m <- test(Z6, "Id")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ## Zadanie7
@@ -619,7 +686,7 @@ Z7 <- function (x)
     isNew <- v$Year == 2017 | v$Year == 2016
     nvId <- unlist(unique(v[isNew, "PostId"]))
     nv <- v[isNew, "PostId"][,.N, keyby = PostId]
-    setkey(PostsDT,Id) #jeśli nie ustawione wcześniej (zmienione w Z5)
+    setkey(PostsDT,Id)
     ov <- v[!isNew, "PostId"][,.(OldVotes = .N), keyby = PostId]
     d <- 
       nv[PostsDT[PostTypeId == 1,.(Id, Title)]
@@ -645,7 +712,22 @@ Z7 <- function (x)
 ```{r test7, echo = FALSE, message = FALSE}
 m <- test(Z7, "Title")
 autoplot(m)
-m
+p <- print(m)
+s <- rewrite(s, p)
 ```
 ***
 ##Podsumowanie
+Najszybszym z używanych pakietów okazał się `data.table`. Pakiet `sqldf` i funkcje z `base` działały najwolniej.  
+Wyjątkiem jest zadanie 6, gdzie to właśnie funkcje bazowe są najszybsze. W rozwiązaniu zadania 6 nie ma żadnych funkcji typu `merge/aggregate` które nie działają optymalnie. Są za operatory *%in%*, które także działają nieoptymalnie, ale w tym zadaniu po prawej stronie tego operatora są na tyle małe zbiory danych, że nie ma to dużego znaczenia.  
+
+### Benchmark
+```{r benchmark_summary, echo = FALSE, message = FALSE}
+barplot(as.matrix(s), ylab="Liczba zadań", beside=TRUE, col = c("green", "yellow", "orange", "red"))
+legend("topleft", c("a(fastest)", "b", "c", "d"), fill = c("green", "yellow", "orange", "red"))
+s
+```
+
+
+
+
+
