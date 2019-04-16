@@ -1,3 +1,16 @@
+## Ważne informacje
+Używane ramki danych pochodzą z serwisu https://travel.stackexchange.com.  
+Pełen zbiór danych dostępny jest pod adresem https://archive.org/download/stackexchange.  
+Do poprawnego skompilowania pliku *report.rmd* wymagane jest podanie ścieżki do katalogu z plikami *.csv* z danymi i zainstalowanie używanych pakietów (w sekcji "*r setup*").  
+
+## Cele projektu
+* Stworzenie funkcji w bazowym R, dplyr i data.table, odpowiadających podanym zapytaniom SQL.
+* Dodanie słownego opisu tych zapytań.
+* Sprawdzenie poprawności i szybkości działania napisanych funkcji i podanych zapytań.
+* Stworzenie raportu w R markdown (poniżej wersja skompilowana do *.md*).
+
+-----
+
 Testy
 -----
 Funkcja `same` sprawdza równość podanych argumentów, zakładając, że
